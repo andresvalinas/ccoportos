@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCO Portos — Centro de Controle Operacional</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --royal:#002A9A; --royal2:#00227E; --title:#1240C4;
+  --green:#00A843; --orange:#F47920;
+  --bg:#F5F7FB; --white:#FFF; --text:#1B2437; --muted:#6B7688; --border:#E4E8F0;
+  --red:#d63131; --yellow:#D97706;
+  --navy:#0D33A8; --verde:#00A843; --ambar:#D97706; --verm:#d63131; --azul:#0D33A8;
+  --trilho:#EDF1F7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px}
+.num{font-variant-numeric:tabular-nums}
+
+/* ===== layout: sidebar azul-royal com marca (padrão Portal RH) ===== */
+.app{display:flex;align-items:stretch;min-height:100vh}
+aside{width:216px;flex:none;background:var(--royal);padding:0 10px 16px;display:flex;flex-direction:column;gap:4px;
+  position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#3552A6 transparent}
+.marca{padding:18px 12px 20px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:12px;display:flex;align-items:center;gap:11px}
+.marca .logo{height:42px;width:42px;flex:none}
+.marca .logo img{height:100%;width:100%;display:block;border-radius:9px}
+.marca .nome{color:#FFF;font-size:18px;font-weight:800;letter-spacing:.3px;line-height:1.05}
+.marca .nome .sub{display:block;color:#9FB3EA;font-size:12.5px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+aside .rotulo-menu{font-size:10px;font-weight:700;letter-spacing:1.6px;color:#8FA6E8;padding:8px 12px 6px;text-transform:uppercase}
+aside button{display:block;width:100%;text-align:left;padding:10px 13px;font-size:13px;font-weight:600;
+  color:#C9D6F5;background:transparent;border:none;border-radius:9px;cursor:pointer;
+  transition:transform .08s ease, background .15s, color .15s}
+aside button:hover{color:#FFF;background:rgba(255,255,255,.09)}
+aside button:active{transform:translateX(2px)}
+aside button.ativo{color:#FFF;background:rgba(255,255,255,.16);box-shadow:inset 0 1px 4px rgba(0,0,0,.25)}
+aside button:focus-visible{outline:2px solid #FFF;outline-offset:-2px}
+.coluna{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* cabeçalho de página: migalha + título grande azul */
+.pagina-topo{padding:22px 30px 0}
+.migalha{font-size:11px;font-weight:600;letter-spacing:1.2px;color:#9AA6BC;text-transform:uppercase}
+.migalha b{color:var(--title);font-weight:700}
+h1.pagina{font-size:28px;font-weight:800;color:var(--title);margin:4px 0 2px}
+
+/* abas estilo RH: barra clara, ativa em cartão branco */
+#subabas{display:flex;gap:4px;margin:14px 30px 0;padding:5px;background:#EAEEF6;border-radius:12px;
+  width:max-content;max-width:calc(100% - 60px);overflow-x:auto}
+#subabas button{padding:8px 18px;font-size:12.5px;font-weight:700;cursor:pointer;border:none;border-radius:9px;
+  background:transparent;color:var(--muted);white-space:nowrap;
+  transition:transform .08s ease, background .15s, color .15s, box-shadow .15s}
+#subabas button:hover{color:var(--title)}
+#subabas button:active{transform:translateY(1px)}
+#subabas button.ativo{background:var(--white);color:var(--title);box-shadow:0 1px 4px rgba(13,51,168,.16)}
+#subabas button:focus-visible{outline:2px solid var(--royal);outline-offset:-2px}
+main{padding:18px 30px 50px;max-width:1180px}
+footer{padding:0 30px 24px;color:var(--muted);font-size:11px}
+@media(max-width:900px){
+  .app{flex-direction:column}
+  aside{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;padding:8px;position:static;height:auto;overflow:visible}
+  .marca{padding:8px 12px;border:none;margin:0}
+  aside .rotulo-menu{display:none}
+  aside button{width:auto}
+  .pagina-topo, main, footer{padding-left:16px;padding-right:16px}
+  #subabas{margin:12px 16px 0}
+}
+
+/* ===== componentes ===== */
+.grid-big{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:14px;margin-bottom:20px}
+.big{background:var(--white);border-radius:12px;padding:18px 20px;border:1px solid var(--border);position:relative;overflow:hidden}
+.big::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--royal)}
+.big .rotulo{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
+.big .valor{font-size:26px;font-weight:800;line-height:1;margin-bottom:4px;color:var(--title)}
+.big .detalhe{font-size:11px;color:var(--muted);line-height:1.4}
+.big.ok::before{background:var(--green)}   .big.ok .valor{color:var(--green)}
+.big.warn::before{background:var(--yellow)} .big.warn .valor{color:var(--yellow)}
+.big.bad::before{background:var(--red)}     .big.bad .valor{color:var(--red)}
+section{background:var(--white);border-radius:12px;border:1px solid var(--border);padding:18px 22px;margin-bottom:18px}
+section h2{font-size:15px;font-weight:800;color:var(--title);margin-bottom:2px}
+section .nota{color:var(--muted);font-size:11.5px;margin-bottom:14px}
+.hl{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--border);font-size:13.5px}
+.hl:last-child{border-bottom:none}
+.hl .ponto{width:9px;height:9px;border-radius:50%;flex:none}
+.lx{display:grid;grid-template-columns:128px 1fr 132px 62px;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.lx:last-child{border-bottom:none}
+.lx.larga{grid-template-columns:215px 1fr 132px 62px}
+.lx-nome{font-size:12.5px;font-weight:600;color:var(--text)}
+.lx-trilho{height:9px;background:#EEF1F7;border-radius:999px;position:relative}
+.lx-bar{position:absolute;left:0;top:0;height:100%;border-radius:999px}
+.lx-tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--royal);border-radius:2px;opacity:.9}
+.lx-val{text-align:right;font-size:13px;font-weight:700;color:var(--text);line-height:1.25}
+.lx-val .sub{display:block;font-size:10.5px;font-weight:500;color:var(--muted)}
+.lx-pill{text-align:right}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:#8A96AC;font-weight:700;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);font-size:10.5px;text-transform:uppercase;letter-spacing:1px}
+td{padding:12px;border-bottom:1px solid var(--border)}
+.rolagem tr:hover td{background:#F8FAFD}
+.cel-main{font-weight:700;color:var(--text)}
+.cel-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.destaque{color:var(--title);font-weight:700}
+.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.toolbar .busca{margin:0}
+.toolbar .info{font-size:12px;color:var(--muted)}
+.btn-excel{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-family:'Inter';font-size:12.5px;font-weight:600;
+  color:var(--text);background:var(--white);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s, transform .08s}
+.btn-excel:hover{border-color:var(--royal);color:var(--title)}
+.btn-excel:active{transform:translateY(1px)}
+tr:last-child td{border-bottom:none}
+td.dir,th.dir{text-align:right}
+tr.total td{font-weight:700;border-top:2px solid var(--border)}
+.rolagem tr.total td{position:sticky;bottom:0;background:var(--white);z-index:1;box-shadow:0 -2px 0 var(--border)}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700}
+.tag.verm{background:#fdeaea;color:#a12525}
+.tag.ambar{background:#FEF3C7;color:#92400E}
+.tag.verde{background:#DCFCE7;color:#15803D}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.duas{grid-template-columns:1fr}}
+#carregando{padding:60px;text-align:center;color:var(--muted)}
+.erro{background:#fdeaea;border:1px solid var(--red);border-radius:12px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#a12525}
+.aviso{background:#fdeaea;border:1px solid var(--red);color:#a12525;border-radius:10px;
+  padding:9px 14px;margin:0 0 16px;font-size:12.5px;font-weight:600}
+.busca{width:100%;max-width:360px;padding:9px 15px;border:1.5px solid var(--border);border-radius:10px;
+  font-family:'Inter';font-size:12.5px;color:var(--text);outline:none;margin-bottom:10px;background:var(--white)}
+.busca:focus{border-color:var(--royal)}
+.rolagem{max-height:430px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+.rolagem table{font-size:12px}
+.rolagem th{position:sticky;top:0;background:var(--white);z-index:1;box-shadow:0 2px 0 var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+.rolagem th:hover{color:var(--title)}
+.rolagem th.ord-asc::after{content:" ▲";font-size:9px;color:var(--green)}
+.rolagem th.ord-desc::after{content:" ▼";font-size:9px;color:var(--green)}
+select.mes{font-family:'Inter';font-weight:700;font-size:12px;color:var(--title);border:1.5px solid var(--border);border-radius:10px;padding:6px 12px;background:#FFF;cursor:pointer}
+a .big .big-t{color:var(--texto)} a .big:hover{box-shadow:0 4px 14px rgba(0,42,154,.12);transform:translateY(-1px);transition:.15s}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="menu"></aside>
+  <div class="coluna">
+    <div class="pagina-topo">
+      <div class="migalha" id="migalha"></div>
+      <h1 class="pagina" id="titulo-pagina"></h1>
+    </div>
+    <nav id="subabas" style="display:none"></nav>
+    <main><div id="carregando">Carregando dados do banco…</div><div id="conteudo"></div></main>
+    <footer id="rodape"></footer>
+  </div>
+</div>
+
+<script>
+const SB_URL = "https://rzrzkgehpxtyqxvxhrzz.supabase.co/rest/v1";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6cnprZ2VocHh0eXF4dnhocnp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MTc0ODQsImV4cCI6MjA5Nzk5MzQ4NH0.MewX-WP_uc6J7XsmTfy7IMd3pShj7_UklEdJj0ZoGPI";
+const GERENTES = ["ANDRÉS","CÁSSIA","KASSIANO","MARIANA","UESLEI"];
+const NOMES = {"ANDRÉS":"Andrés Valinas","MARIANA":"Mariana Abreu","CÁSSIA":"Cassia Palmeira",
+               "KASSIANO":"Kassiano do Carmo","UESLEI":"Ueslei Mota"};
+const nomeCompleto = g => NOMES[(g||"").toUpperCase()] || cap(g||"");
+const SUBS = ["Resumo","DRE","Pessoas","Faturamento","Corretivas & Preventivas","EPI","Frota"];
+const cap = s => s[0]+s.slice(1).toLowerCase();
+
+const fmtMi = v => v==null ? "—" : "R$ " + (v/1e6).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}) + " mi";
+const fmtAuto = v => {
+  if(v==null) return "—";
+  const a = Math.abs(v);
+  if(a >= 995e3) return "R$ " + (v/1e6).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}) + " mi";
+  if(a >= 1e3)  return "R$ " + Math.round(v/1e3).toLocaleString("pt-BR") + " mil";
+  return "R$ " + Math.round(v).toLocaleString("pt-BR");
+};
+const fmtMil = v => v==null ? "—" : "R$ " + (v/1e3).toLocaleString("pt-BR",{maximumFractionDigits:0}) + " mil";
+const pct = (a,b) => (b&&a!=null) ? Math.round(1000*a/b)/10 : null;
+const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc2 = esc;
+const nomeMes = am => ["","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][+String(am).slice(4)] + "/" + String(am).slice(2,4);
+
+let D = {};
+let abaAtual = "Diretoria";
+let subAba = "Resumo";
+let mesSel = null;
+let mesMaq = null;
+const opSel = {};  // filtro de operação por quadro
+let opCP = "";      // filtro de operação da aba Corretivas & Preventivas
+let prioTop = "1";  // prioridade do quadro de mais antigas (1=Urgente)
+let opTri = "";     // operação do desempenho por trimestre
+let pessPer = "ano"; // período da aba Pessoas: ano | mes
+let fatPer = "vida"; // período do faturamento: vida | mes
+const prioSel = {}; // filtro de prioridade por quadro
+
+async function pegaTudo(caminho){
+  const tudo = [];
+  for(let ini = 0; ; ini += 1000){
+    const r = await fetch(`${SB_URL}/${caminho}`, {headers:{apikey:SB_KEY, Authorization:"Bearer "+SB_KEY,
+      Range:`${ini}-${ini+999}`, "Range-Unit":"items"}});
+    if(!r.ok) throw new Error(caminho.split("?")[0]+" → HTTP "+r.status);
+    const lote = await r.json();
+    tudo.push(...lote);
+    if(lote.length < 1000) break;
+  }
+  return tudo;
+}
+async function pega(caminho){
+  const r = await fetch(`${SB_URL}/${caminho}`, {headers:{apikey:SB_KEY, Authorization:"Bearer "+SB_KEY}});
+  if(!r.ok) throw new Error(caminho.split("?")[0]+" → HTTP "+r.status);
+  return r.json();
+}
+
+const tenta = pr => pr.catch(()=>[]);
+async function carregar(){
+  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, dre, custoOp, custoMaq, equip, frota] = await Promise.all([
+    pega("mv_cco_rxo_gerente?select=*"),
+    pega("mv_cco_custos_gerente_mes?select=*"),
+    pega("v_cco_epi_gerente?select=*"),
+    pega("v_cco_os_kpis_gerente?select=*"),
+    pega("v_cco_prev_kpis_gerente?select=*"),
+    pegaTudo("v_cco_os_corretivas?select=num_ordem,prioridade,dias_aberto,equipamento,operacao,descricao,gerente&order=dias_aberto.desc.nullslast"),
+    pegaTudo("v_cco_os_preventivas?select=num_ordem,equipamento,aderencia,operacao,gerente,hor_acumulado,hor_revisao&order=aderencia.asc.nullslast"),
+    pega("v_cco_saude_coletores?select=*"),
+    pega("mv_cco_rxo_operacao?select=*"),
+    pega("mv_cco_resultado_gerente?select=*"),
+    pega("mv_cco_orcado_manut?select=*"),
+    pegaTudo("v_cco_epi_itens?select=*"),
+    pega("v_cco_resultado_oficial?select=anomes,dre,metrica,valor"),
+    pegaTudo("v_cco_epi_colaboradores?select=*"),
+    pegaTudo("mv_cco_resultado_operacao?select=*"),
+    pegaTudo("v_cco_horimetro_atual?select=*"),
+    tenta(pegaTudo("v_cco_fat?select=*")),
+    tenta(pegaTudo("v_cco_fat_mes?select=*")),
+    tenta(pega("v_cco_rh_kpis?select=*")),
+    tenta(pegaTudo("v_cco_rh_turnover_local?select=*")),
+    tenta(pegaTudo("v_cco_rh_abs_local?select=*")),
+    tenta(pegaTudo("v_cco_rh_turnover_local_mes?select=*")),
+    tenta(pegaTudo("v_cco_rh_abs_local_mes?select=*")),
+    tenta(pega("v_cco_rh_tot?select=*")),
+    pega("mv_cco_dre_gerente?select=*"),
+    pega("mv_cco_custo_operacao?select=*"),
+    pegaTudo("mv_cco_custo_maquina?select=*"),
+    pegaTudo("v_cco_equipamentos?select=ativo,descricao,marca,modelo,nome_cl,gerente"),
+    pegaTudo("v_cco_frota_mapa?select=ativo,description,model,nome_cl,latitude,longitude,location_datetime,location_source,hourmeter,snapshot_date,gerente&gerente=not.is.null"),
+  ]);
+  const canon = g => { const u=(g||"").toUpperCase();
+    if(u.includes("PEDRO AUGUSTO LEAL")) return "CÁSSIA";
+    if(u.includes("ANDRES MARTIN")) return "ANDRÉS";
+    if(u.includes("UESLEI")) return "UESLEI";
+    if(u.includes("KASSIANO")) return "KASSIANO";
+    if(u.includes("MARIANA LEMOS")) return "MARIANA";
+    return null; };
+  corr.forEach(o=>o.g=canon(o.gerente));
+  prev.forEach(o=>o.g=canon(o.gerente));
+  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes};
+  D.rhTot = (rhTot && rhTot[0]) || null;
+  D.rhK = (rhKpis && rhKpis[0]) || null;
+  const pctNorm = v => { v = +v||0; return v <= 1 ? v*100 : v; };
+  [rhAbs, rhAbsMes].forEach(a=>a.forEach(r=>{ r.pct_abs = pctNorm(r.pct_abs); }));
+  [rhDesl, rhDeslMes].forEach(a=>a.forEach(r=>{ r.turnover_acum = pctNorm(r.turnover_acum); }));
+  // índice operação(normalizada) -> gerente, para casar textos do RH com o CCO
+  const normOp = s => (s||"").toUpperCase().normalize("NFD").replace(/[^A-Z0-9]/g,"");
+  D.normOp = normOp;
+  D.opGerIdx = {};
+  equip.forEach(e=>{ if(e.gerente && e.nome_cl) D.opGerIdx[normOp(e.nome_cl)] = e.gerente; });
+  epi.forEach(e=>{ if(e.gerente && e.gerente!=="SEM GERENTE" && e.operacao) D.opGerIdx[normOp(e.operacao)] = e.gerente; });
+  D.gerDe = op => {
+    const k = normOp(op);
+    if(D.opGerIdx[k]) return D.opGerIdx[k];
+    for(const kk in D.opGerIdx){ if(k && (kk.includes(k) || k.includes(kk))) return D.opGerIdx[kk]; }
+    return null;
+  };
+  D.horIdx = Object.fromEntries(horAtual.map(x=>[x.ativo, x]));
+  D.equipIdx = Object.fromEntries(equip.map(e=>[e.ativo, e]));
+  D.equipG = {};
+  equip.forEach(e=>{ if(e.gerente){ (D.equipG[e.gerente] ||= []).push(e); } });
+  const agora = new Date(); const mesAtual = agora.getFullYear()*100 + (agora.getMonth()+1);
+  const meses = [...new Set(rxo.filter(r=>+r.anomes<mesAtual && r.realizado && Math.abs(r.realizado)>1e5).map(r=>+r.anomes))].sort();
+  D.mesFechado = String(meses[meses.length-1] ?? mesAtual);
+  D.mesesAno = meses.filter(m=>String(m).slice(0,4)===D.mesFechado.slice(0,4)).map(String);
+}
+
+function avisoColetores(){
+  const ruins = D.saude.filter(s=>s.status==="vermelho");
+  if(!ruins.length) return "";
+  return `<div class="aviso">⚠ Atenção: dado possivelmente desatualizado — ${ruins.length} fonte(s) sem coleta recente (${ruins.map(r=>esc(r.coletor)).join(", ")}).</div>`;
+}
+
+/* ---------- helpers de operação/cidade ---------- */
+function limpaEmpresa(s){
+  return (s||"").replace(/\b(S\/?A\.?|LTDA\.?|EIRELI|SA)\b/gi,"").replace(/\s{2,}/g," ").trim()
+    .split(/\s+/).slice(0,2).join(" ");
+}
+function normYara(o){
+  if(/^YARA/i.test(o.op) && /CUBAT/i.test(o.cid||"")) return {op:"YARA", cid:"CUBATÃO"};
+  return o;
+}
+function splitOpOS(s){
+  const p = (s||"").split(" - ").map(x=>x.trim());
+  if(p.length>=3) return normYara({op:limpaEmpresa(p.slice(0,p.length-2).join(" ")), cid:p[p.length-2]});
+  if(p.length===2) return normYara({op:limpaEmpresa(p[0]), cid:p[1]});
+  return {op:limpaEmpresa(s), cid:"—"};
+}
+function splitOpEPI(s){
+  const m = (s||"").match(/^(.*?)\s*-\s*(.+)$/);
+  if(m) return normYara({op:m[1].trim(), cid:m[2].replace(/\/[A-Z]{2}$/,"").trim()});
+  const t = (s||"").trim().split(/\s+/);
+  if(t.length>=2) return normYara({op:t[0], cid:t.slice(1).join(" ")});
+  return {op:s||"—", cid:"—"};
+}
+function agrupaEpi(lista){
+  const g = {};
+  lista.forEach(e=>{
+    const sp = splitOpEPI(e.operacao), k = sp.op+"|"+sp.cid;
+    if(!g[k]) g[k] = {op:sp.op, cid:sp.cid, at:0, atr:0};
+    g[k].at += +e.funcionarios_ativos; g[k].atr += +e.funcionarios_com_atraso;
+  });
+  return Object.values(g).map(x=>({...x, ok: x.at ? Math.round(1000*(x.at-x.atr)/x.at)/10 : null}));
+}
+const CATS_DEFEITO = [
+  ["Pneu", /pneu/i],
+  ["Elétrico", /el[eé]tric|chicote|m[óo]dulo|partida|bateria|farol|luz|painel|sensor/i],
+  ["Ar-condicionado", /ar.?condicionado|climatiza|\bA\/?C\b/i],
+  ["Motor", /motor/i],
+  ["Hidráulico", /hidr[áa]ul|cilindro|mangueira|mangote/i],
+  ["Vazamento", /vazamento|vazando|vaza\b/i],
+  ["Freio", /freio|lona/i],
+  ["Rodante/Esteira", /esteira|rodante|roldana|sapata|corrente/i],
+  ["Lâmina/Caçamba", /l[âa]mina|ca[çc]amba|concha|dente|borda/i],
+  ["Vidro/Cabine", /vidro|cabine|porta|banco|retrovisor/i],
+  ["Combustível", /combust|diesel|tanque/i],
+];
+function classificaDefeito(desc){
+  for(const [nome,re] of CATS_DEFEITO) if(re.test(desc||"")) return nome;
+  return "Outros";
+}
+const PALETA = ["#002A9A","#00A843","#F47920","#4F46E5","#DC2626","#D97706","#0EA5E9","#DB2777","#5A6080","#15803D"];
+
+/* ---------- gráficos SVG ---------- */
+function svgVBarDuplo(dados, fmt, rotulado){
+  if(!dados.length) return '<div class="nota">Sem dados.</div>';
+  const colW = rotulado ? 84 : 130;
+  const W = Math.max(dados.length*colW+70, 420), H = rotulado ? 262 : 235, base = 178, topo = 22;
+  const mx = Math.max(...dados.map(d=>Math.max(Math.abs(d.real||0), Math.abs(d.orc||0))), 1);
+  const escl = v => (base-topo) * Math.abs(v||0) / mx;
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;font-family:Inter,sans-serif">`;
+  s += `<line x1="42" y1="${base}" x2="${W-10}" y2="${base}" stroke="#E4E8F0"/>`;
+  dados.forEach((d,i)=>{
+    const x = 56 + i*colW;
+    const bw = rotulado ? 22 : 30, gap = rotulado ? 27 : 38;
+    const hR = escl(d.real), hO = escl(d.orc);
+    const p = d.orc ? Math.round(100*d.real/d.orc) : null;
+    const cor = p==null ? "#002A9A" : (p>=98 ? "#00A843" : p>=90 ? "#D97706" : "#d63131");
+    s += `<rect x="${x+gap}" y="${base-hO}" width="${bw}" height="${hO}" fill="#E3E9F6" rx="5"><title>${esc(d.rot)} · orçado ${fmt(d.orc)}</title></rect>`;
+    s += `<rect x="${x}" y="${base-hR}" width="${bw}" height="${hR}" fill="${cor}" rx="5"><title>${esc(d.rot)} · realizado ${fmt(d.real)}${p!=null?" ("+p+"%)":""}</title></rect>`;
+    s += `<text x="${x+bw/2}" y="${base-hR-6}" font-size="${rotulado?9.5:10.5}" font-weight="700" fill="${cor}" text-anchor="middle">${fmt(d.real)}</text>`;
+    if(!rotulado) s += `<text x="${x+gap+bw/2}" y="${base-hO-6}" font-size="9.5" font-weight="500" fill="#8A96AC" text-anchor="middle">${fmt(d.orc)}</text>`;
+    if(rotulado){
+      const nome = d.rot.length>16 ? d.rot.slice(0,15)+"…" : d.rot;
+      s += `<text x="${x+bw+gap/2}" y="${base+14}" font-size="9.5" font-weight="600" fill="#6B7688" text-anchor="end" transform="rotate(-32 ${x+bw+gap/2} ${base+14})">${esc(nome)}</text>`;
+      if(p!=null) s += `<text x="${x+(bw+gap+bw)/2-10}" y="${topo-8}" font-size="0"> </text>`;
+    } else {
+      s += `<text x="${x+34}" y="${base+16}" font-size="11" font-weight="700" fill="#1B2437" text-anchor="middle">${esc(d.rot)}</text>`;
+      if(p!=null) s += `<text x="${x+34}" y="${base+32}" font-size="10" font-weight="700" fill="${cor}" text-anchor="middle">${p}%</text>`;
+    }
+  });
+  s += `</svg>${rotulado?"":'<div class="nota" style="margin-top:4px">Barra colorida = realizado · barra clara = orçado. * = trimestre parcial.</div>'}`;
+  return `<div style="overflow-x:auto;text-align:center">${s}</div>`;
+}
+function svgVBarPct(dados, opts){
+  opts = opts || {};
+  if(!dados.length) return '<div class="nota">Sem dados.</div>';
+  const escala = opts.max || 100;
+  const inv = !!opts.inv;
+  const corDe = v => inv ? (v<=4.6?"#00A843":v<=8?"#D97706":"#d63131")
+                         : (v>=80?"#00A843":v>=60?"#D97706":"#d63131");
+  const colW = 118, W = Math.max(dados.length*colW+60, 380), H = 232, base = 172, topo = 26;
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;font-family:Inter,sans-serif">`;
+  s += `<line x1="40" y1="${base}" x2="${W-10}" y2="${base}" stroke="#E4E8F0"/>`;
+  s += `<line x1="40" y1="${topo}" x2="${W-10}" y2="${topo}" stroke="#E4E8F0" stroke-dasharray="4 4"/>`;
+  s += `<text x="${W-12}" y="${topo-6}" font-size="8.5" fill="#8A96AC" text-anchor="end">${escala}%</text>`;
+  dados.forEach((d,i)=>{
+    const x = 54 + i*colW;
+    const v = Math.max(0, Math.min(escala, d.v||0));
+    const hb = (base-topo)*v/escala;
+    const cor = corDe(d.v||0);
+    s += `<rect x="${x}" y="${topo}" width="34" height="${base-topo}" fill="#F0F3F9" rx="6"/>`;
+    s += `<rect x="${x}" y="${base-hb}" width="34" height="${hb}" fill="${cor}" rx="6"><title>${esc(d.rot)}: ${v}% em dia</title></rect>`;
+    s += `<text x="${x+17}" y="${base-hb-7}" font-size="12" font-weight="800" fill="${cor}" text-anchor="middle">${(d.v||0).toLocaleString("pt-BR",{maximumFractionDigits:1})}%</text>`;
+    s += `<text x="${x+17}" y="${base+16}" font-size="10.5" font-weight="700" fill="#1B2437" text-anchor="middle">${esc(d.rot)}</text>`;
+    if(d.sub) s += `<text x="${x+17}" y="${base+30}" font-size="9" font-weight="500" fill="#8A96AC" text-anchor="middle">${esc(d.sub)}</text>`;
+  });
+  s += `</svg>`;
+  return `<div style="overflow-x:auto;text-align:center">${s}</div>`;
+}
+function svgPareto(items){
+  if(!items.length) return '<div class="nota">Sem dados.</div>';
+  const W = Math.max(items.length*64+80, 420), H = 255, base = 180, topo = 20;
+  const total = items.reduce((s,i)=>s+i.qtd,0);
+  const mx = items[0].qtd;
+  let acc = 0, pts = [];
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;font-family:Inter,sans-serif">`;
+  s += `<line x1="40" y1="${base}" x2="${W-10}" y2="${base}" stroke="#E4E8F0"/>`;
+  items.forEach((it,i)=>{
+    const x = 48 + i*64, hb = (base-topo)*it.qtd/mx;
+    acc += it.qtd;
+    pts.push([x+15, base-(base-topo)*(acc/total)]);
+    const nome = it.nome.length>15 ? it.nome.slice(0,14)+"…" : it.nome;
+    s += `<rect x="${x}" y="${base-hb}" width="30" height="${hb}" fill="#0D33A8" rx="4"><title>${esc(it.nome)}: ${it.qtd}</title></rect>`;
+    s += `<text x="${x+15}" y="${base-hb-5}" font-size="10.5" font-weight="700" fill="#1240C4" text-anchor="middle">${it.qtd}</text>`;
+    s += `<text x="${x+27}" y="${base+13}" font-size="9.5" font-weight="500" fill="#6B7688" text-anchor="end" transform="rotate(-33 ${x+27} ${base+13})">${esc(nome)}</text>`;
+  });
+  s += `<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#F47920" stroke-width="1.8"/>`;
+  pts.forEach((p,i)=>{ s += `<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="#FFF" stroke="#F47920" stroke-width="1.6"/>`;
+    const pc = Math.round(100*items.slice(0,i+1).reduce((a,b)=>a+b.qtd,0)/total);
+    if(i===0||i===pts.length-1||i===Math.floor(pts.length/2)) s += `<text x="${p[0]}" y="${p[1]-8}" font-size="9.5" font-weight="700" fill="#F47920" text-anchor="middle">${pc}%</text>`;});
+  s += `</svg>`;
+  return `<div style="overflow-x:auto;text-align:center">${s}</div>`;
+}
+function svgDonut(items, rotuloCentro){
+  if(!items.length) return '<div class="nota">Sem dados.</div>';
+  const total = items.reduce((s,i)=>s+i.qtd,0);
+  const R=62, r=38, cx=75, cy=75;
+  let ang = -Math.PI/2, s = `<svg viewBox="0 0 150 150" style="width:170px;flex:none">`;
+  items.forEach((it,i)=>{
+    const a2 = ang + 2*Math.PI*it.qtd/total;
+    const laro = a2-ang > Math.PI ? 1 : 0;
+    const x1=cx+R*Math.cos(ang), y1=cy+R*Math.sin(ang), x2=cx+R*Math.cos(a2), y2=cy+R*Math.sin(a2);
+    const x3=cx+r*Math.cos(a2), y3=cy+r*Math.sin(a2), x4=cx+r*Math.cos(ang), y4=cy+r*Math.sin(ang);
+    s += `<path d="M${x1} ${y1} A${R} ${R} 0 ${laro} 1 ${x2} ${y2} L${x3} ${y3} A${r} ${r} 0 ${laro} 0 ${x4} ${y4} Z" fill="${PALETA[i%PALETA.length]}"/>`;
+    ang = a2;
+  });
+  s += `<text x="${cx}" y="${cy+1}" font-family="Inter,sans-serif" font-size="20" font-weight="800" fill="#1240C4" text-anchor="middle">${total}</text>`;
+  s += `<text x="${cx}" y="${cy+15}" font-size="8.5" fill="#5A6080" text-anchor="middle">${rotuloCentro||"atrasadas"}</text></svg>`;
+  const leg = items.map((it,i)=>`<div style="display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;margin:4px 0">
+    <span style="width:10px;height:10px;border-radius:3px;background:${PALETA[i%PALETA.length]};flex:none"></span>
+    <span>${esc(it.nome)}</span>
+    <b class="num">${it.qtd}</b>
+    <span class="num" style="color:var(--muted)">(${Math.round(100*it.qtd/total)}%)</span></div>`).join("");
+  return `<div style="display:flex;gap:20px;align-items:center;justify-content:center;flex-wrap:wrap">
+    ${s}<div style="min-width:240px;max-width:340px">${leg}</div></div>`;
+}
+
+function barraDupla(nome, real, orc, formato, larga){
+  const maxo = Math.max(Math.abs(real||0), Math.abs(orc||0)) || 1;
+  const p = pct(real, orc);
+  const cor = p==null ? "var(--royal)" : (p>=98 ? "var(--verde)" : p>=90 ? "var(--ambar)" : "var(--verm)");
+  const wReal = Math.max(1.5, 100*Math.abs(real||0)/maxo);
+  const wOrc  = Math.min(100, 100*Math.abs(orc||0)/maxo);
+  const pill = p==null ? "" :
+    `<span class="tag ${p>=98?"verde":p>=90?"ambar":"verm"}">${Math.round(p)}%</span>`;
+  return `<div class="lx${larga?" larga":""}">
+    <div class="lx-nome" title="${esc(nome)}">${esc(nome)}</div>
+    <div class="lx-trilho"><div class="lx-bar num" style="width:${wReal}%;background:${cor}"></div>
+      ${orc?`<div class="lx-tick" style="left:${wOrc}%" title="orçado ${formato(orc)}"></div>`:""}</div>
+    <div class="lx-val num">${formato(real)}<span class="sub">orç ${formato(orc)}</span></div>
+    <div class="lx-pill">${pill}</div>
+  </div>`;
+}
+function barraSimples(nome, valor, maxo, formato, cor){
+  const w = Math.max(1.5, 100*(valor||0)/(maxo||1));
+  return `<div class="lx">
+    <div class="lx-nome" title="${esc(nome)}">${esc(nome)}</div>
+    <div class="lx-trilho"><div class="lx-bar num" style="width:${w}%;background:${cor||"var(--royal)"}"></div></div>
+    <div class="lx-val num">${formato(valor)}</div>
+    <div class="lx-pill"></div>
+  </div>`;
+}
+function big(rotulo, valor, detalhe, cls){
+  return `<div class="big ${cls||""}"><div class="rotulo">${rotulo}</div>
+    <div class="valor num">${valor}</div><div class="detalhe">${detalhe||""}</div></div>`;
+}
+function somaRxo(filtro){
+  const linhas = D.rxo.filter(filtro);
+  return { real: linhas.reduce((s,r)=>s+(+r.realizado||0),0), orc: linhas.reduce((s,r)=>s+(+r.orcado||0),0) };
+}
+function hl(cor, texto){
+  return `<div class="hl"><span class="ponto" style="background:${cor}"></span><span>${texto}</span></div>`;
+}
+function corSem(p, otimo, bom){ // % maior = melhor
+  return p==null ? "var(--muted)" : p>=otimo ? "var(--verde)" : p>=bom ? "var(--ambar)" : "var(--verm)";
+}
+
+/* ================= DIRETORIA ================= */
+function abaDiretoria(){
+  const m = D.mesFechado;
+  const mes = somaRxo(r=>r.anomes===m);
+  const pMes = pct(mes.real, mes.orc);
+  const urg = D.osk.reduce((s,o)=>s+ +o.corretivas_urgentes,0);
+  const corrTot = D.osk.reduce((s,o)=>s+ +o.corretivas_abertas,0);
+  const prevAtr = D.prevk.reduce((s,o)=>s+ +o.preventivas_atrasadas,0);
+  const epiAtivos = D.epi.reduce((s,e)=>s+ +e.funcionarios_ativos,0);
+  const epiAtraso = D.epi.reduce((s,e)=>s+ +e.funcionarios_com_atraso,0);
+  const epiOk = pct(epiAtivos-epiAtraso, epiAtivos);
+  const mC = [...new Set(D.custos.map(c=>c.anomes))].sort().pop() || m;
+  const agoraYM = String(new Date().getFullYear()*100 + (new Date().getMonth()+1));
+  const parcialC = mC === agoraYM ? " (parcial)" : "";
+  const custoMes = D.custos.filter(c=>c.anomes===mC).reduce((s,c)=>s+ +c.custo,0);
+
+  const orcManutTot = GERENTES.reduce((s,g)=>s + +((D.orcManut.find(x=>x.anomes===mC&&x.gerente===g)||{}).orcado_manut||0), 0);
+  const pManut = pct(custoMes, orcManutTot);
+  let h = `<h2 style="font-size:15px;font-weight:800;color:var(--title);margin:4px 0 12px">Visão Geral</h2>
+  <div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+    ${big("Receita "+nomeMes(m), fmtMi(mes.real), pMes+"% do orçado ("+fmtMi(mes.orc)+")", pMes>=98?"ok":pMes>=90?"warn":"bad")}
+    ${(()=>{const rOf=D.resOf.filter(r=>r.anomes===m&&/^total$/i.test(r.dre));
+      if(!rOf.length) return "";
+      const re=rOf.find(r=>r.metrica==="Real"), oc=rOf.find(r=>r.metrica!=="Real");
+      const pr=pct(re?.valor, oc?.valor);
+      return big("Resultado BU "+nomeMes(m), fmtMi(re?.valor), (pr??"—")+"% do orçado ("+fmtMi(oc?.valor)+") · fonte oficial #6 RxO", pr>=98?"ok":pr>=85?"warn":"bad");})()}
+    ${big("Pendente de faturamento", D.fat.length? fmtAuto(D.fat.reduce((s,f)=>s+(+f.pendente||0),0)) : "—",
+        D.fat.length? ("até "+new Date().toLocaleDateString("pt-BR",{month:"long"})+"/"+String(new Date().getFullYear()).slice(2)+" · "+fmtAuto(D.fat.reduce((s,f)=>s+(+f.faturado||0),0))+" já faturado") : "fonte: 1ª coleta pendente",
+        D.fat.length? (D.fat.reduce((s,f)=>s+(+f.pendente||0),0)>0?"warn":"ok") : "")}
+  </div>
+  <div class="grid-big" style="margin-top:12px">
+    ${big("Custo Manutenção "+nomeMes(mC)+parcialC, fmtAuto(custoMes), (pManut??"—")+"% do orçado ("+fmtAuto(orcManutTot)+")", pManut==null?"":pManut<=85?"ok":pManut<=100?"warn":"bad")}
+    ${big("Corretivas urgentes", `${urg}`, corrTot+" corretivas abertas na BU", urg>50?"bad":urg>20?"warn":"ok")}
+    ${big("Preventivas atrasadas", `${prevAtr}`, "de "+D.prevk.reduce((s,o)=>s+ +o.preventivas_abertas,0)+" abertas", prevAtr>80?"bad":prevAtr>30?"warn":"ok")}
+    ${big("Máquinas", D.equip.length, "ativos na BU (cadastro oficial RxO)", "")}
+  </div>`;
+
+  // pessoas & faturamento — visão BU
+  const k = D.rhK;
+  const hpBU = D.rhAbs.reduce((s,r)=>s+(+r.h_previstas||0),0);
+  const hnBU = D.rhAbs.reduce((s,r)=>s+(+r.nao_abonadas||0)+(+r.leg_justificados||0),0);
+  const absBU = hpBU? Math.round(1000*hnBU/hpBU)/10 : null;
+  const custoAbsBU = D.rhAbs.reduce((s,r)=>s+(+r.custo_abs||0),0);
+  const deslBU2 = D.rhDesl.reduce((s,r)=>s+(+r.desligamentos||0),0);
+  const volBU = D.rhDesl.reduce((s,r)=>s+(+r.voluntarios||0),0);
+  const invBU = D.rhDesl.reduce((s,r)=>s+(+r.involuntarios||0),0);
+  const fatTot = D.fat.reduce((s,f)=>s+(+f.total||0),0);
+  const fatPend = D.fat.reduce((s,f)=>s+(+f.pendente||0),0);
+  const fatFat = D.fat.reduce((s,f)=>s+(+f.faturado||0),0);
+  h += `<h2 style="font-size:15px;font-weight:800;color:var(--title);margin:4px 0 12px">Pessoas — BU</h2>
+  <div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+    ${big("Turnover acumulado", D.rhTot&&D.rhTot.turnover_acum!=null? (Math.round(D.rhTot.turnover_acum*10)/10).toLocaleString("pt-BR")+"%" : "—",
+        D.rhTot? "meta anual 28% · "+(D.rhTot.desligamentos||0)+" desligamentos" : "robô de RH: 1ª coleta pendente",
+        D.rhTot&&D.rhTot.turnover_acum!=null? (D.rhTot.turnover_acum<=21?"ok":D.rhTot.turnover_acum<=28?"warn":"bad") : "")}
+    ${big("Absenteísmo", absBU!=null? absBU.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%" : (k&&k.absenteismo!=null? k.absenteismo+"%":"—"),
+        absBU!=null? (fmtAuto(custoAbsBU)+" de custo no período") : "robô de RH: 1ª coleta pendente",
+        absBU!=null? (absBU<=4.64?"ok":absBU<=6?"warn":"bad") : "")}
+    ${big("Desligamentos", D.rhDesl.length? deslBU2 : "—",
+        D.rhDesl.length? (volBU+" voluntários · "+invBU+" involuntários") : "robô de RH: 1ª coleta pendente",
+        deslBU2>60?"bad":deslBU2>25?"warn":"")}
+    ${big("Custo de HE", k&&k.custo_he!=null? fmtAuto(k.custo_he) : "—",
+        k&&k.custo_he_encargos!=null? (fmtAuto(k.custo_he_encargos)+" c/ encargos") : (k? "" : "robô de RH: 1ª coleta pendente"),
+        k&&k.custo_he!=null? "warn":"")}
+    ${big("EPI em dia", (epiOk??"—")+"%", epiAtraso+" de "+epiAtivos+" funcionários com atraso", epiOk>=80?"ok":epiOk>=60?"warn":"bad")}
+  </div>`;
+
+  // DRE consolidado da BU
+  const mesesDre = [...new Set(D.dre.map(r=>r.anomes))].sort();
+  if(!mesSel || !mesesDre.includes(mesSel)) mesSel = mesesDre.includes(m) ? m : mesesDre[mesesDre.length-1];
+  const porDreBU = {};
+  D.dre.filter(r=>r.anomes===mesSel).forEach(r=>{
+    if(!porDreBU[r.dre]) porDreBU[r.dre] = {dre:r.dre, realizado:0, orcado:0, subs:{}};
+    porDreBU[r.dre].realizado += +r.realizado; porDreBU[r.dre].orcado += +r.orcado;
+    if(r.sub){ if(!porDreBU[r.dre].subs[r.sub]) porDreBU[r.dre].subs[r.sub]={realizado:0,orcado:0};
+      porDreBU[r.dre].subs[r.sub].realizado += +r.realizado; porDreBU[r.dre].subs[r.sub].orcado += +r.orcado; }
+  });
+  const linhasBU = Object.values(porDreBU).sort((a,b)=>a.dre.localeCompare(b.dre));
+  const l15BU = linhasBU.filter(r=>/^[1-5]\./.test(r.dre));
+  const totRBU = l15BU.reduce((s,r)=>s+ +r.realizado,0), totOBU = l15BU.reduce((s,r)=>s+ +r.orcado,0);
+  const linhaDreBU = (rotulo, r, o, sub) => {
+    const p2 = pct(r, o); const delta = r - o;
+    return `<tr${sub?' style="background:#FAFBFE"':''}>
+      <td${sub?' style="padding-left:34px"':''}>${sub?`<span class="cel-sub" style="font-size:12px">└ ${esc(rotulo)}</span>`:esc(rotulo)}</td>
+      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${fmtMil(r)}</td>
+      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${o? fmtMil(o):"—"}</td>
+      <td class="dir num" style="color:${delta>=0?"var(--verde)":"var(--verm)"};font-weight:${sub?500:700}">${delta>=0?"▲":"▼"} ${fmtMil(Math.abs(delta))}</td>
+      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${p2!=null? p2+"%":"—"}</td></tr>`;
+  };
+  h += `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">DRE Portos — consolidado
+      <select class="mes" onchange="mesSel=this.value;render(abaAtual)">
+        ${mesesDre.map(am=>`<option value="${am}" ${am===mesSel?"selected":""}>${nomeMes(am)}${am===agoraYM?" (parcial)":""}</option>`).join("")}
+      </select>${btnExcel('tb-dre-bu','dre_portos_'+mesSel)}</h2>
+    <div class="nota">BU inteira (todos os centros de lucro). Total = linhas 1 a 5, régua oficial.</div>
+    <table id="tb-dre-bu"><tr><th>Linha DRE</th><th class="dir">Realizado</th><th class="dir">Orçado</th><th class="dir">Δ O×R</th><th class="dir">%</th></tr>`;
+  h += linhasBU.map(r=>{
+    let bloco = linhaDreBU(r.dre, +r.realizado, +r.orcado, false);
+    const ordemSub = ["Folha","Custos de Manutenção","Outros Custos"];
+    Object.entries(r.subs).sort((a,b)=>ordemSub.indexOf(a[0])-ordemSub.indexOf(b[0]))
+      .forEach(([nome,v])=> bloco += linhaDreBU(nome, +v.realizado, +v.orcado, true));
+    return bloco;
+  }).join("");
+  const pTBU = pct(totRBU, totOBU);
+  h += `<tr class="total"><td>Total (1–5)</td><td class="dir num">${fmtMil(totRBU)}</td><td class="dir num">${fmtMil(totOBU)}</td>
+    <td class="dir num" style="color:${totRBU>=totOBU?"var(--verde)":"var(--verm)"}">${totRBU>=totOBU?"▲":"▼"} ${fmtMil(Math.abs(totRBU-totOBU))}</td>
+    <td class="dir num">${pTBU!=null?pTBU+"%":"—"}</td></tr></table></section>`;
+
+  // desempenho por trimestre — BU consolidada (mesmo desenho do resumo do gerente)
+  const anoTriBU = D.mesFechado.slice(0,4);
+  const trisBU = [1,2,3,4].map(nt=>{
+    const q = {t:"T"+nt, meses:0, recR:0, recO:0, resR:0, resO:0};
+    for(let mm = nt*3-2; mm <= nt*3; mm++){
+      const am = anoTriBU + String(mm).padStart(2,"0");
+      const s = somaRxo(r=>r.anomes===am);
+      q.recO += s.orc;
+      D.res.filter(x=>x.anomes===am).forEach(rr=>{ q.resO += +rr.resultado_orc||0; });
+      if(D.mesesAno.includes(am)){
+        q.meses++; q.recR += s.real;
+        D.res.filter(x=>x.anomes===am).forEach(rr=>{ q.resR += +rr.resultado_real||0; });
+      }
+    }
+    return q;
+  }).filter(q=>q.resO || q.recO || q.meses);
+  h += `<h2 style="font-size:15px;font-weight:800;color:var(--title);margin:4px 0 12px">Financeiro</h2><section><h2>Desempenho por trimestre — BU ${m.slice(0,4)}</h2>
+    <div class="nota">Meses fechados, BU consolidada. Resultado (linhas 1–5) × meta, por trimestre.</div>
+    <div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px">` +
+    trisBU.map(q=>{
+      const p2 = q.meses ? pct(q.resR, q.resO) : null;
+      const parcial = q.meses===0 ? " (a iniciar)" : q.meses<3 ? " (parcial)" : "";
+      return big(q.t+parcial+" · Resultado", q.meses? fmtAuto(q.resR) : "—",
+        "meta "+fmtAuto(q.resO)+(p2!=null?" · "+p2+"% da meta cheia":""),
+        p2==null?"":p2>=98?"ok":p2>=85?"warn":"bad");
+    }).join("") + `</div>` +
+    `<div class="nota" style="margin:6px 0 6px"><b style="color:var(--title)">Receita mensal</b> — Receita × orçado da BU, mês a mês.</div>` +
+    svgVBarDuplo(D.mesesAno.map(am=>{
+      const s = somaRxo(r=>r.anomes===am);
+      return {rot: nomeMes(am).split("/")[0], real: s.real, orc: s.orc};
+    }), fmtAuto) +
+    `<div class="nota" style="margin:18px 0 6px"><b style="color:var(--title)">Resultado mensal</b> — Resultado × meta da BU, mês a mês.</div>` +
+    svgVBarDuplo(D.mesesAno.map(am=>{
+      let rR=0, rO=0;
+      D.res.filter(x=>x.anomes===am).forEach(rr=>{ rR += +rr.resultado_real||0; rO += +rr.resultado_orc||0; });
+      return {rot: nomeMes(am).split("/")[0], real: rR, orc: rO};
+    }), fmtAuto) +
+  `</section>`;
+
+  // cards: resultado de cada gerente x meta
+  const resM = GERENTES.map(g=>{const r=D.res.find(x=>x.anomes===m&&x.gerente===g)||{};
+    return {g, real:+r.resultado_real||0, orc:+r.resultado_orc||0};}).sort((a,b)=>b.real-a.real);
+  h += `<section><h2>Resultado por Gerência — ${nomeMes(m)}</h2>
+    <div class="nota">Resultado (linhas 1–5) × meta de cada gerente, e abaixo a receita contra o orçado.</div>
+    <div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:18px">` +
+    resM.map(r=>{
+      const p2 = pct(r.real, r.orc);
+      return big(nomeCompleto(r.g), fmtAuto(r.real), "meta "+fmtAuto(r.orc)+(p2!=null?" · "+p2+"%":""), p2==null?"":p2>=98?"ok":p2>=85?"warn":"bad");
+    }).join("") + `</div>
+    <div class="nota" style="margin-bottom:6px"><b style="color:var(--title)">Receita x Orçado por gerente</b> — Razão Completo × Base Orçamento.</div>`;
+  const rxoM = GERENTES.map(g=>{const l=D.rxo.filter(r=>r.anomes===m&&r.gerente===g);
+    return {g, real:l.reduce((s,r)=>s+ +r.realizado||0,0), orc:l.reduce((s,r)=>s+(+r.orcado||0),0)};})
+    .sort((a,b)=>b.orc-a.orc);
+  h += rxoM.map(r=>barraDupla(nomeCompleto(r.g), r.real, r.orc, fmtAuto)).join("");
+  h += `</section>`;
+
+  h += `<section><h2>Custo de manutenção por gerente — ${nomeMes(mC)}${parcialC}</h2>
+    <div class="nota">Realizado (coletas diárias 08:20 e 16:30) × orçado de manutenção do mês. Barra colorida pelo atingimento; traço = orçado.</div>`;
+  const cM = GERENTES.map(g=>({g,
+      v: D.custos.filter(c=>c.anomes===mC&&c.gerente===g).reduce((s,c)=>s+ +c.custo,0),
+      o: +((D.orcManut.find(x=>x.anomes===mC&&x.gerente===g)||{}).orcado_manut||0)}))
+    .sort((a,b)=>b.o-a.o);
+  h += cM.map(c=>{
+    const p = pct(c.v, c.o);
+    const cor = p==null ? "var(--royal)" : (p<=85 ? "var(--verde)" : p<=100 ? "var(--ambar)" : "var(--verm)");
+    const pill = p==null ? "" : `<span class="tag ${p<=85?"verde":p<=100?"ambar":"verm"}">${Math.round(p)}%</span>`;
+    const w = Math.max(1.5, 100*c.v/Math.max(c.v, c.o, 1));
+    const wo = Math.min(100, 100*c.o/Math.max(c.v, c.o, 1));
+    return `<div class="lx"><div class="lx-nome">${esc(nomeCompleto(c.g))}</div>
+      <div class="lx-trilho"><div class="lx-bar num" style="width:${w}%;background:${cor}"></div>
+        ${c.o?`<div class="lx-tick" style="left:${wo}%" title="orçado ${fmtAuto(c.o)}"></div>`:""}</div>
+      <div class="lx-val num">${fmtAuto(c.v)}<span class="sub">orç ${fmtAuto(c.o)}</span></div>
+      <div class="lx-pill">${pill}</div></div>`;
+  }).join("");
+  const orcTot = cM.reduce((s,c)=>s+c.o,0);
+  if(custoMes) h+=`<div class="nota" style="margin-top:10px">Total: ${fmtAuto(custoMes)} de ${fmtAuto(orcTot)} orçado (${pct(custoMes,orcTot)??"—"}%).</div>`;
+  h += `</section>`;
+
+  h += `<h2 style="font-size:15px;font-weight:800;color:var(--title);margin:4px 0 12px">EPI</h2><section><h2>Entrega de EPI</h2>
+    <div class="nota">% de funcionários com EPI em dia (última coleta ${esc(D.epi[0]?.coletado_em||"")}).</div>`;
+  const grupos = [...GERENTES, "SEM GERENTE"];
+  const epiG = grupos.map(g=>{const l=D.epi.filter(e=>e.gerente===g);
+    const at=l.reduce((s,e)=>s+ +e.funcionarios_ativos,0), atr=l.reduce((s,e)=>s+ +e.funcionarios_com_atraso,0);
+    return {g, ops:l.length, ok: pct(at-atr, at)};}).filter(x=>x.ops>0);
+  h += svgVBarPct(epiG.map(e=>{
+    const l = D.epi.filter(x=>x.gerente===e.g);
+    const at = l.reduce((s,x)=>s+ +x.funcionarios_ativos,0), atr = l.reduce((s,x)=>s+ +x.funcionarios_com_atraso,0);
+    return {rot: e.g==="SEM GERENTE" ? "A definir" : nomeCompleto(e.g).split(" ")[0],
+            sub: `${e.ops} op. · ${atr}/${at} c/ atraso`, v: e.ok};
+  }));
+  const gruposEpi = {};
+  D.epi.forEach(e=>{ const sp=splitOpEPI(e.operacao), k=sp.op+"|"+sp.cid;
+    if(!gruposEpi[k]) gruposEpi[k]={op:sp.op,cid:sp.cid,gerente:e.gerente,at:0,atr:0};
+    gruposEpi[k].at+= +e.funcionarios_ativos; gruposEpi[k].atr+= +e.funcionarios_com_atraso; });
+  const piores = Object.values(gruposEpi).filter(e=>e.at>=5)
+    .map(e=>({...e, pa: Math.round(1000*e.atr/e.at)/10})).sort((a,b)=>b.pa-a.pa).slice(0,5);
+  h += `<div class="nota" style="margin:14px 0 6px">Operações mais críticas (5+ funcionários):</div>
+    <table><tr><th>Operação</th><th>Cidade</th><th>Gerente</th><th class="dir">Funcionários</th><th class="dir">Com atraso</th><th class="dir">% atraso</th></tr>`;
+  h += piores.map(e=>`<tr><td>${esc(e.op)}</td><td>${esc(e.cid)}</td><td>${esc(e.gerente==="SEM GERENTE"?"—":nomeCompleto(e.gerente))}</td>
+    <td class="dir num">${e.at}</td><td class="dir num">${e.atr}</td>
+    <td class="dir num"><span class="tag ${e.pa>=70?"verm":e.pa>=40?"ambar":"verde"}">${e.pa}%</span></td></tr>`).join("");
+  h += `</table></section>`;
+  return h;
+}
+
+/* ================= GERENTE: métricas base ================= */
+function metricasGerente(G){
+  const m = D.mesFechado;
+  const mC = [...new Set(D.custos.map(c=>c.anomes))].sort().pop() || m;
+  const agoraYM = String(new Date().getFullYear()*100 + (new Date().getMonth()+1));
+  const mes = somaRxo(r=>r.anomes===m&&r.gerente===G);
+  const res = D.res.find(r=>r.anomes===m&&r.gerente===G)||{};
+  const custoM = D.custos.filter(c=>c.anomes===mC&&c.gerente===G).reduce((s,c)=>s+ +c.custo,0);
+  const orcM = (D.orcManut.find(o=>o.anomes===mC&&o.gerente===G)||{}).orcado_manut;
+  const osk = D.osk.find(o=>o.gerente===G)||{};
+  const pvk = D.prevk.find(o=>o.gerente===G)||{};
+  const epiL = D.epi.filter(e=>e.gerente===G);
+  const at=epiL.reduce((s,e)=>s+ +e.funcionarios_ativos,0), atr=epiL.reduce((s,e)=>s+ +e.funcionarios_com_atraso,0);
+  return {m, mC, parcialC: mC===agoraYM?" (parcial)":"", mes, p:pct(mes.real,mes.orc),
+    res, pRes:pct(res.resultado_real,res.resultado_orc),
+    custoM, orcM, pCusto:pct(custoM,orcM), osk, pvk, epiL, at, atr, epiOk:pct(at-atr,at)};
+}
+
+/* ---------- Resumo executivo ---------- */
+function gerResumo(G){
+  const M = metricasGerente(G);
+  let h = `<div class="grid-big">
+    ${big("Receita "+nomeMes(M.m), fmtMi(M.mes.real), (M.p??"—")+"% do orçado ("+fmtMi(M.mes.orc)+")", M.p>=98?"ok":M.p>=90?"warn":"bad")}
+    ${big("Resultado "+nomeMes(M.m), fmtMi(M.res.resultado_real), (M.pRes??"—")+"% do orçado ("+fmtMi(M.res.resultado_orc)+")", M.pRes>=98?"ok":M.pRes>=85?"warn":"bad")}
+    ${big("Custo Manutenção "+nomeMes(M.mC)+M.parcialC, fmtMil(M.custoM),
+        M.orcM?("orçado "+fmtMil(M.orcM)+" · "+(M.pCusto??"—")+"% atingido"):"sem orçado mapeado",
+        M.pCusto==null?"":M.pCusto<=85?"ok":M.pCusto<=100?"warn":"bad")}
+    ${big("Corretivas urgentes", M.osk.corretivas_urgentes??0, (M.osk.corretivas_abertas??0)+" abertas · pior: "+(M.osk.max_dias_aberto??"—")+" dias", (M.osk.corretivas_urgentes||0)>10?"bad":(M.osk.corretivas_urgentes||0)>4?"warn":"ok")}
+    ${big("Preventivas atrasadas", M.pvk.preventivas_atrasadas??0, (M.pvk.preventivas_abertas??0)+" abertas", (M.pvk.preventivas_atrasadas||0)>20?"bad":(M.pvk.preventivas_atrasadas||0)>8?"warn":"ok")}
+    ${big("EPI em dia", (M.epiOk??"—")+"%", M.atr+" de "+M.at+" funcionários com atraso", M.epiOk>=80?"ok":M.epiOk>=60?"warn":"bad")}
+    ${big("Máquinas", (D.equipG[G]||[]).length, "ativos no cadastro oficial", "")}
+    ${(()=>{ const fg = D.fat.filter(f=>f.gerente===G);
+      const pd = fg.reduce((s,f)=>s+(+f.pendente||0),0);
+      return big("Pendente de faturamento", fg.length? fmtAuto(pd) : "—",
+        fg.length? fg.filter(f=>+f.pendente>0).length+" projetos com valor em aberto" : "sem contratos vinculados",
+        fg.length? (pd>5e6?"bad":pd>0?"warn":"ok") : ""); })()}
+  </div>`;
+
+  // highlights automáticos
+  const hls = [];
+  hls.push(hl(corSem(M.pRes,98,85), `<b>Resultado ${nomeMes(M.m)}:</b> ${fmtMi(M.res.resultado_real)} — ${M.pRes??"—"}% do orçado, na régua oficial do RxO.`));
+  hls.push(hl(corSem(M.p,98,90), `<b>Receita:</b> ${fmtMi(M.mes.real)} (${M.p??"—"}% do orçado).`));
+  if(M.pCusto!=null) hls.push(hl(M.pCusto<=85?"var(--verde)":M.pCusto<=100?"var(--ambar)":"var(--verm)",
+    `<b>Custo de manutenção ${nomeMes(M.mC)}${M.parcialC}:</b> ${fmtMil(M.custoM)} — ${M.pCusto}% do orçado do mês.`));
+  const corrG = D.corr.filter(o=>o.g===G);
+  if(corrG.length){
+    const pior = corrG[0], sp = splitOpOS(pior.operacao);
+    hls.push(hl(pior.dias_aberto>=90?"var(--verm)":"var(--ambar)",
+      `<b>Corretiva mais antiga:</b> OS ${esc(pior.num_ordem)} (${esc(pior.equipamento)} · ${esc(sp.op)}/${esc(sp.cid)}) aberta há <b>${pior.dias_aberto} dias</b>.`));
+    const cont={}; corrG.forEach(o=>{const c=classificaDefeito(o.descricao); cont[c]=(cont[c]||0)+1;});
+    const top = Object.entries(cont).sort((a,b)=>b[1]-a[1])[0];
+    if(top) hls.push(hl("var(--azul)", `<b>Defeito nº 1 da frota:</b> ${esc(top[0])} — ${top[1]} das ${corrG.length} corretivas abertas.`));
+  }
+  const prevG = D.prev.filter(o=>o.g===G && o.aderencia<0);
+  if(prevG.length){
+    const p0 = prevG[0];
+    hls.push(hl("var(--verm)", `<b>Preventiva mais estourada:</b> ${esc(p0.equipamento)} com <b>${Math.round(p0.aderencia).toLocaleString("pt-BR")}h</b> vencidas (${esc(splitOpOS(p0.operacao).op)}).`));
+  }
+  const epiRuins = agrupaEpi(M.epiL).filter(e=>e.at>=5).sort((a,b)=>a.ok-b.ok)[0];
+  if(epiRuins) hls.push(hl(epiRuins.ok>=60?"var(--ambar)":"var(--verm)",
+    `<b>EPI mais crítico:</b> ${esc(epiRuins.op)}/${esc(epiRuins.cid)} com apenas ${epiRuins.ok}% em dia (${epiRuins.atr} de ${epiRuins.at}).`));
+
+  h += `<section><h2>Highlights</h2><div class="nota">Lidos automaticamente dos dados de hoje.</div>${hls.join("")}</section>`;
+
+  // visão trimestral: resultado x meta (cards) + receita x orçado (barras verticais)
+  const anoTri = D.mesFechado.slice(0,4);
+  const resOpG = D.resOp.filter(r=>r.gerente===G);
+  const rotOp = nc => {const sp=splitOpEPI(nc); return sp.op+" / "+sp.cid;};
+  const opsTri = opsDe(resOpG.filter(r=>Math.abs(+r.res_orc)>1000||Math.abs(+r.res_real)>1000), r=>rotOp(r.nome_cl));
+  if(opTri && !opsTri.includes(opTri)) opTri = "";
+  const noOpTri = r => !opTri || rotOp(r.nome_cl)===opTri;
+  const somaRes = am => resOpG.filter(r=>r.anomes===am && noOpTri(r))
+    .reduce((a,r)=>({real:a.real + +r.res_real, orc:a.orc + +r.res_orc}), {real:0,orc:0});
+  const somaRec = am => D.rxoOp.filter(r=>r.gerente===G && r.anomes===am && noOpTri(r))
+    .reduce((a,r)=>({real:a.real + +r.realizado, orc:a.orc + +r.orcado}), {real:0,orc:0});
+  const tris = [1,2,3,4].map(nt=>{
+    const q = {t:"T"+nt, meses:0, recR:0, recO:0, resR:0, resO:0};
+    for(let mm = nt*3-2; mm <= nt*3; mm++){
+      const am = anoTri + String(mm).padStart(2,"0");
+      const sc = somaRec(am), sr = somaRes(am);
+      q.recO += sc.orc; q.resO += sr.orc;           // orçado do trimestre INTEIRO
+      if(D.mesesAno.includes(am)){                  // realizado só dos meses fechados
+        q.meses++; q.recR += sc.real; q.resR += sr.real;
+      }
+    }
+    return q;
+  }).filter(q=>q.resO || q.recO || q.meses);
+  h += `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Desempenho por trimestre — ${M.m.slice(0,4)}
+      <select class="mes" onchange="opTri=this.value;render(abaAtual)">
+        <option value="">Todas as operações</option>
+        ${opsTri.map(o=>`<option value="${esc(o)}" ${o===opTri?"selected":""}>${esc(o)}</option>`).join("")}
+      </select></h2>
+    <div class="nota">Meses fechados. Resultado (linhas 1–5) × meta, por trimestre${opTri?" — "+esc(opTri):""}.</div>
+    <div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px">` +
+    tris.map(q=>{
+      const p2 = q.meses ? pct(q.resR, q.resO) : null;
+      const parcial = q.meses===0 ? " (a iniciar)" : q.meses<3 ? " (parcial)" : "";
+      return big(q.t+parcial+" · Resultado", q.meses? fmtAuto(q.resR) : "—",
+        "meta "+fmtAuto(q.resO)+(p2!=null?" · "+p2+"% da meta cheia":""),
+        p2==null?"":p2>=98?"ok":p2>=85?"warn":"bad");
+    }).join("") + `</div>` +
+    `<div class="nota" style="margin:6px 0 6px"><b style="color:var(--title)">Receita mensal</b> — Receita × orçado, mês a mês.</div>` +
+    svgVBarDuplo(D.mesesAno.map(am=>{
+      const s = somaRec(am);
+      return {rot: nomeMes(am).split("/")[0], real: s.real, orc: s.orc};
+    }), fmtAuto) +
+    `<div class="nota" style="margin:18px 0 6px"><b style="color:var(--title)">Resultado mensal</b> — Resultado (linhas 1–5) × meta, mês a mês.</div>` +
+    svgVBarDuplo(D.mesesAno.map(am=>{
+      const sr = somaRes(am);
+      return {rot: nomeMes(am).split("/")[0], real: sr.real, orc: sr.orc};
+    }), fmtAuto) +
+  `</section>`;
+
+  // ---- pílulas de manutenção e EPI (visão rápida, detalhe nas abas) ----
+  const vaiAba = s => `<span style="cursor:pointer;color:var(--title);font-weight:700" onclick="subAba='${s}';render(abaAtual)">ver aba completa →</span>`;
+  const corrG2 = D.corr.filter(o=>o.g===G);
+  const contPrio = {};
+  corrG2.forEach(o=>{ const nm = (o.prioridade||"Sem prioridade").replace(/^\d+\.\s*/,""); contPrio[nm]=(contPrio[nm]||0)+1; });
+  const donCorr = Object.entries(contPrio).map(([nome,qtd])=>({nome,qtd})).sort((a,b)=>b.qtd-a.qtd);
+
+  const prevA2 = D.prev.filter(o=>o.g===G);
+  const porOpPrev = {};
+  prevA2.forEach(o=>{ const sp=splitOpOS(o.operacao), k=sp.op;
+    if(!porOpPrev[k]) porOpPrev[k]={ab:0, atr:0};
+    porOpPrev[k].ab++; if(o.aderencia<0) porOpPrev[k].atr++; });
+  const prevBars = Object.entries(porOpPrev).sort((a,b)=>b[1].ab-a[1].ab).slice(0,6)
+    .map(([op,x])=>({rot: op.length>11?op.slice(0,10)+"…":op, sub:`${x.atr}/${x.ab} atrasadas`, v: Math.round(100*(x.ab-x.atr)/x.ab)}));
+
+  const epiBars = agrupaEpi(M.epiL).filter(e=>e.at>=3).sort((a,b)=>b.at-a.at).slice(0,6)
+    .map(e=>({rot: e.op.length>11?e.op.slice(0,10)+"…":e.op, sub:`${e.atr}/${e.at} c/ atraso`, v: Math.round(e.ok)}));
+
+  h += `<div class="duas">
+    <section><h2>Corretivas abertas</h2>
+      <div class="nota">${corrG2.length} OS por prioridade · ${vaiAba('Corretivas & Preventivas')}</div>
+      ${svgDonut(donCorr, "abertas")}
+    </section>
+    <section><h2>Aderência de preventivas</h2>
+      <div class="nota">% em dia por operação (top ${prevBars.length}) · ${vaiAba('Corretivas & Preventivas')}</div>
+      ${svgVBarPct(prevBars)}
+    </section>
+  </div>
+  <section><h2>Entrega de EPI por operação</h2>
+    <div class="nota">% de funcionários com EPI em dia (maiores operações) · ${vaiAba('EPI')}</div>
+    ${svgVBarPct(epiBars)}
+  </section>`;
+
+  // teasers de Pessoas e Faturamento
+  const absG3 = D.rhAbs.map(r=>({...r, g: D.gerDe(r.local)})).filter(r=>r.g===G);
+  const hp3 = absG3.reduce((s,r)=>s+(+r.h_previstas||0),0), hn3 = absG3.reduce((s,r)=>s+(+r.nao_abonadas||0)+(+r.leg_justificados||0),0);
+  const abs3 = hp3? Math.round(1000*hn3/hp3)/10 : null;
+  const desl3 = D.rhDesl.map(r=>({...r, g: D.gerDe(r.local)})).filter(r=>r.g===G)
+    .reduce((s,r)=>s+(+r.desligamentos||0),0);
+  const fat3 = D.fat.filter(f=>f.gerente===G);
+  const pend3 = fat3.reduce((s,f)=>s+(+f.pendente||0),0), fatu3 = fat3.reduce((s,f)=>s+(+f.faturado||0),0);
+  h += `<div class="duas">
+    <section><h2>Pessoas</h2>
+      <div class="nota">${vaiAba('Pessoas')}</div>
+      ${absG3.length? `<div class="grid-big" style="grid-template-columns:1fr 1fr;margin-bottom:0">
+        ${big("Absenteísmo", abs3.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%", absG3.length+" locais monitorados", abs3<=4.6?"ok":abs3<=8?"warn":"bad")}
+        ${big("Desligamentos", desl3, "acumulado do período", "")}
+      </div>` : `<div class="nota">Aguardando a primeira coleta do robô de RH.</div>`}
+    </section>
+    <section><h2>Faturamento</h2>
+      <div class="nota">${vaiAba('Faturamento')}</div>
+      ${fat3.length? `<div class="grid-big" style="grid-template-columns:1fr 1fr;margin-bottom:0">
+        ${big("Faturado", fmtAuto(fatu3), fat3.length+" projetos", "ok")}
+        ${big("Pendente", fmtAuto(pend3), pct(pend3, fatu3+pend3)!=null? pct(pend3,fatu3+pend3)+"% do total":"", pend3>0?"warn":"ok")}
+      </div>` : `<div class="nota">Aguardando a primeira coleta da fonte de faturamento.</div>`}
+    </section>
+  </div>`;
+  return h;
+}
+
+/* ---------- DRE ---------- */
+function gerDRE(G){
+  const mesesOp = [...new Set(D.dre.filter(r=>r.gerente===G).map(r=>r.anomes))].sort();
+  if(!mesSel || !mesesOp.includes(mesSel)) mesSel = mesesOp.includes(D.mesFechado) ? D.mesFechado : mesesOp[mesesOp.length-1];
+  const agoraYM = String(new Date().getFullYear()*100 + (new Date().getMonth()+1));
+  const brutas = D.dre.filter(r=>r.gerente===G && r.anomes===mesSel);
+  const porDre = {};
+  brutas.forEach(r=>{
+    if(!porDre[r.dre]) porDre[r.dre] = {dre:r.dre, realizado:0, orcado:0, subs:{}};
+    porDre[r.dre].realizado += +r.realizado; porDre[r.dre].orcado += +r.orcado;
+    if(r.sub){ if(!porDre[r.dre].subs[r.sub]) porDre[r.dre].subs[r.sub]={realizado:0,orcado:0};
+      porDre[r.dre].subs[r.sub].realizado += +r.realizado; porDre[r.dre].subs[r.sub].orcado += +r.orcado; }
+  });
+  const linhas = Object.values(porDre).sort((a,b)=>a.dre.localeCompare(b.dre));
+  const l15 = linhas.filter(r=>/^[1-5]\./.test(r.dre));
+  const totR = l15.reduce((s,r)=>s+ +r.realizado,0), totO = l15.reduce((s,r)=>s+ +r.orcado,0);
+
+  let h = `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">DRE — ${cap(G)}
+      <select class="mes" onchange="mesSel=this.value;render(abaAtual)">
+        ${mesesOp.map(am=>`<option value="${am}" ${am===mesSel?"selected":""}>${nomeMes(am)}${am===agoraYM?" (parcial)":""}</option>`).join("")}
+      </select>${btnExcel('tb-dre','dre_'+G.toLowerCase()+'_'+mesSel)}</h2>
+    <div class="nota">Realizado (razão) × orçado (base), nos centros de lucro do gerente. Total = linhas 1 a 5, régua oficial.</div>
+    <table id="tb-dre"><tr><th>Linha DRE</th><th class="dir">Realizado</th><th class="dir">Orçado</th><th class="dir">Δ O×R</th><th class="dir">%</th></tr>`;
+  const linhaDre = (rotulo, r, o, sub) => {
+    const p = pct(r, o);
+    const delta = r - o;
+    return `<tr${sub?' style="background:#FAFBFE"':''}>
+      <td${sub?' style="padding-left:34px"':''}>${sub?`<span class="cel-sub" style="font-size:12px">└ ${esc(rotulo)}</span>`:esc(rotulo)}</td>
+      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${fmtMil(r)}</td>
+      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${o? fmtMil(o):"—"}</td>
+      <td class="dir num" style="color:${delta>=0?"var(--verde)":"var(--verm)"};font-weight:${sub?500:700}">${delta>=0?"▲":"▼"} ${fmtMil(Math.abs(delta))}</td>
+      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${p!=null? p+"%":"—"}</td></tr>`;
+  };
+  h += linhas.map(r=>{
+    let bloco = linhaDre(r.dre, +r.realizado, +r.orcado, false);
+    const ordemSub = ["Folha","Custos de Manutenção","Outros Custos"];
+    Object.entries(r.subs).sort((a,b)=>ordemSub.indexOf(a[0])-ordemSub.indexOf(b[0]))
+      .forEach(([nome,v])=> bloco += linhaDre(nome, +v.realizado, +v.orcado, true));
+    return bloco;
+  }).join("");
+  const pT = pct(totR, totO);
+  h += `<tr class="total"><td>Total (1–5)</td><td class="dir num">${fmtMil(totR)}</td><td class="dir num">${fmtMil(totO)}</td>
+    <td class="dir num" style="color:${totR>=totO?"var(--verde)":"var(--verm)"}">${totR>=totO?"▲":"▼"} ${fmtMil(Math.abs(totR-totO))}</td>
+    <td class="dir num">${pT!=null?pT+"%":"—"}</td></tr>`;
+  h += `</table></section>`;
+
+  // RxO por operação
+  const opsG = {};
+  D.rxoOp.filter(r=>r.gerente===G && r.anomes===mesSel).forEach(r=>{
+    const sp = splitOpEPI(r.nome_cl), k = sp.op+" "+sp.cid;
+    if(!opsG[k]) opsG[k] = {rot:k, real:0, orc:0};
+    opsG[k].real += +r.realizado; opsG[k].orc += +r.orcado; });
+  const ops = Object.values(opsG).filter(o=>Math.abs(o.orc)>1000||Math.abs(o.real)>1000)
+    .sort((a,b)=>Math.abs(b.orc)-Math.abs(a.orc)).slice(0,12);
+  h += `<section><h2>Receita x Orçado por operação — ${nomeMes(mesSel)}</h2>
+    <div class="nota">Barra colorida = realizado (cor pelo atingimento) · barra clara = orçado. Passe o mouse para detalhes.</div>` +
+    svgVBarDuplo(ops.map(o=>({rot:o.rot, real:o.real, orc:o.orc})), fmtAuto, true) +
+    `</section>`;
+
+  // ---- custos (COGS) por operação, seguindo o mês selecionado ----
+  const cOpsG = {};
+  D.custoOp.filter(r=>r.gerente===G && r.anomes===mesSel).forEach(r=>{
+    const sp = splitOpEPI(r.nome_cl), k = sp.op+"|"+sp.cid;
+    if(!cOpsG[k]) cOpsG[k] = {op:sp.op, cid:sp.cid, custo_real:0, custo_orc:0};
+    cOpsG[k].custo_real += +r.custo_real; cOpsG[k].custo_orc += +r.custo_orc; });
+  const cOps = Object.values(cOpsG).filter(r=>r.custo_real>1000 || r.custo_orc>1000);
+  const somaCR = cOps.reduce((s,r)=>s+ +r.custo_real,0), somaCO = cOps.reduce((s,r)=>s+ +r.custo_orc,0);
+  h += `<section><h2>Custos de manutenção por operação — ${nomeMes(mesSel)}</h2>
+    <div class="nota">Realizado (razão) × orçado de manutenção, só operações vivas no RxO.</div>
+    ${toolbar('tb-custop','🔎 Buscar operação…', null, cOps.length+' operações', 'custos_operacao_'+G.toLowerCase()+'_'+mesSel)}
+    <div class="rolagem" style="max-height:380px"><table id="tb-custop">
+    <tr>${["Operação","Cidade","Custo","Orçado","%"].map((t,i)=>
+      `<th class="${i>=2?"dir":""}" onclick="ordenaTabela('tb-custop',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    cOps.sort((a,b)=>b.custo_real-a.custo_real).map(r=>{
+      const p = pct(r.custo_real, r.custo_orc);
+      return `<tr data-busca="${esc((r.op+" "+r.cid).toLowerCase())}">
+      <td>${esc(r.op)}</td><td>${esc(r.cid)}</td>
+      <td class="dir num destaque">${fmtAuto(r.custo_real)}</td>
+      <td class="dir num">${r.custo_orc>0? fmtAuto(r.custo_orc):"—"}</td>
+      <td class="dir num">${p!=null?`<span class="tag ${p<=100?"verde":p<=115?"ambar":"verm"}">${p}%</span>`:"—"}</td></tr>`}).join("") +
+    `<tr class="total"><td>Total</td><td></td><td class="dir num">${fmtAuto(somaCR)}</td>
+     <td class="dir num">${fmtAuto(somaCO)}</td><td class="dir num">${pct(somaCR,somaCO)??"—"}%</td></tr>` +
+    `</table></div></section>`;
+
+  // ---- máquinas que mais gastam (manutenção), com busca ----
+  const mesesMaq = [...new Set(D.custoMaq.filter(r=>r.gerente===G).map(r=>r.anomes))].sort();
+  if(!mesMaq || !mesesMaq.includes(mesMaq)) mesMaq = mesesMaq.includes(mesSel) ? mesSel : mesesMaq[mesesMaq.length-1];
+  const maqs = {};
+  D.custoMaq.filter(r=>r.gerente===G && r.anomes===mesMaq).forEach(r=>{
+    if(!maqs[r.maquina]) maqs[r.maquina] = {maquina:r.maquina, custo:0, lanc:0};
+    maqs[r.maquina].custo += +r.custo; maqs[r.maquina].lanc += +r.lancamentos; });
+  const listaMaq = Object.values(maqs).sort((a,b)=>b.custo-a.custo);
+  const opsMaq = opsDe(listaMaq.filter(r=>D.equipIdx[r.maquina]?.nome_cl),
+    r=>{const sp=splitOpEPI(D.equipIdx[r.maquina].nome_cl); return sp.op+" / "+sp.cid;});
+  const agoraYM2 = String(new Date().getFullYear()*100 + (new Date().getMonth()+1));
+  h += `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Máquinas que mais gastam
+      <select class="mes" onchange="mesMaq=this.value;render(abaAtual)">
+        ${mesesMaq.map(am=>`<option value="${am}" ${am===mesMaq?"selected":""}>${nomeMes(am)}${am===agoraYM2?" (parcial)":""}</option>`).join("")}
+      </select></h2>
+    <div class="nota">Custos de manutenção lançados por máquina. ${listaMaq.length? "Filtre por texto ou operação; clique nos títulos para ordenar." : "Sem lançamentos por máquina neste mês."}</div>`;
+  if(listaMaq.length){
+    h += toolbar('tb-maq','🔎 Buscar máquina…', opsMaq, listaMaq.length+' máquinas · ordenado por custo', 'maquinas_'+G.toLowerCase()+'_'+mesMaq) +
+    `<div class="rolagem"><table id="tb-maq">
+    <tr>${["Máquina","Operação","Lanç.","Custo"].map((t,i)=>
+      `<th class="${i>=2?"dir":""}" onclick="ordenaTabela('tb-maq',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    listaMaq.map(r=>{
+      const eq = D.equipIdx[r.maquina]||{};
+      const spo = eq.nome_cl ? splitOpEPI(eq.nome_cl) : null;
+      const busca = [r.maquina, eq.descricao, eq.nome_cl].join(" ").toLowerCase();
+      return `<tr data-busca="${esc(busca)}" data-op="${spo?esc(spo.op+" / "+spo.cid):""}">
+      <td class="num"><div class="cel-main">${esc(r.maquina)}</div><div class="cel-sub">${esc(eq.descricao||"—")}</div></td>
+      <td>${spo?esc(spo.op+" - "+spo.cid):"—"}</td>
+      <td class="dir num">${r.lanc}</td>
+      <td class="dir num destaque">${fmtAuto(r.custo)}</td></tr>`}).join("") +
+    `</table></div>`;
+  }
+  h += `</section>`;
+  return h;
+}
+
+/* ---------- Corretivas & Preventivas ---------- */
+function gerOsPrev(G){
+  const corrAll = D.corr.filter(o=>o.g===G);
+  const prevAll = D.prev.filter(o=>o.g===G);
+  const opsTab = opsDe([...corrAll, ...prevAll], o=>{const sp=splitOpOS(o.operacao); return sp.op+" / "+sp.cid;});
+  if(opCP && !opsTab.includes(opCP)) opCP = "";
+  const filtraOp = o => !opCP || (()=>{const sp=splitOpOS(o.operacao); return sp.op+" / "+sp.cid === opCP;})();
+  const corrG = corrAll.filter(filtraOp);
+  const prevTodas = prevAll.filter(filtraOp);
+  const urgentes = corrG.filter(o=>/^1\./.test(o.prioridade||""));
+  const altas    = corrG.filter(o=>/^2\./.test(o.prioridade||""));
+  const medias   = corrG.filter(o=>/^3\./.test(o.prioridade||""));
+  const PRIOS = {"":"Todas","1":"Urgente","2":"Alta","3":"Média"};
+  const baseTop = prioTop==="" ? corrG : corrG.filter(o=>(o.prioridade||"").startsWith(prioTop));
+  const corr10 = baseTop.slice(0,10);
+  let h = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+    <span style="font-size:12.5px;font-weight:700;color:var(--muted)">Operação:</span>
+    <select class="mes" onchange="opCP=this.value;render(abaAtual)">
+      <option value="">Todas</option>
+      ${opsTab.map(o=>`<option value="${esc(o)}" ${o===opCP?"selected":""}>${esc(o)}</option>`).join("")}
+    </select></div>`;
+  h += `<div class="grid-big">
+    ${big("Corretivas abertas", corrG.length, opCP||"todas as operações", "")}
+    ${big("Urgentes", urgentes.length, "prioridade 1", urgentes.length>10?"bad":urgentes.length>4?"warn":"ok")}
+    ${big("Alta", altas.length, "prioridade 2", altas.length>15?"warn":"")}
+    ${big("Média", medias.length, "prioridade 3", "")}
+  </div>`;
+  h += `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Corretivas mais antigas
+      <select class="mes" onchange="prioTop=this.value;render(abaAtual)">
+        ${Object.entries(PRIOS).map(([v,n])=>`<option value="${v}" ${v===prioTop?"selected":""}>${n}${v?"s":""}</option>`).join("")}
+      </select>${btnExcel('tb-top-corr','top_corretivas_'+G.toLowerCase())}</h2>
+    <div class="nota">Top 10 das ${baseTop.length} ${prioTop?PRIOS[prioTop].toLowerCase()+"s":"corretivas"} abertas, da mais antiga para a mais recente.</div>
+    <table id="tb-top-corr"><tr><th>OS</th><th>Ativo</th><th>Operação</th><th>Cidade</th><th>Descrição</th><th class="dir">Dias</th></tr>` +
+    corr10.map(o=>{const sp=splitOpOS(o.operacao);
+      return `<tr><td class="num">${esc(o.num_ordem)}</td><td class="num">${esc(o.equipamento)}</td>
+      <td>${esc(sp.op)}</td><td>${esc(sp.cid)}</td>
+      <td>${esc((o.descricao||"").split("|")[1]?.trim()||o.descricao||"").slice(0,50)}</td>
+      <td class="dir num"><span class="tag ${o.dias_aberto>=90?"verm":o.dias_aberto>=30?"ambar":"verde"}">${o.dias_aberto??"—"}</span></td></tr>`}).join("") +
+    `</table>
+    <div class="nota" style="margin:16px 0 6px"><b style="color:var(--navy)">Pareto de defeitos</b> — classificação automática pela descrição das ${corrG.length} corretivas abertas.</div>`;
+  const cont = {};
+  corrG.forEach(o=>{ const c=classificaDefeito(o.descricao); cont[c]=(cont[c]||0)+1; });
+  const par = Object.entries(cont).map(([nome,qtd])=>({nome,qtd})).sort((a,b)=>b.qtd-a.qtd).slice(0,10);
+  h += svgPareto(par) + `</section>`;
+
+  // quadro completo com busca
+  const opsCorr = opsDe(corrG, o=>{const sp=splitOpOS(o.operacao); return sp.op+" / "+sp.cid;});
+  h += `<section><h2>Todas as corretivas abertas (${corrG.length})</h2>
+    ${toolbar('tb-corr','🔎 Buscar corretiva…', opsCorr, corrG.length+' corretivas · ordenado por dias', 'corretivas_'+G.toLowerCase())
+      .replace('<span class="info">', `<select class="mes" onchange="prioSel['tb-corr']=this.value;filtraTabela('tb-corr')">
+        <option value="">Todas prioridades</option>
+        <option value="1" ${prioSel['tb-corr']==="1"?"selected":""}>Urgentes</option>
+        <option value="2" ${prioSel['tb-corr']==="2"?"selected":""}>Altas</option>
+        <option value="3" ${prioSel['tb-corr']==="3"?"selected":""}>Médias</option>
+      </select><span class="info">`)}
+    <div class="rolagem"><table id="tb-corr">
+    <tr>${["OS","Ativo","Prior.","Operação","Cidade","Descrição","Dias"].map((t,i)=>
+      `<th class="${i===6?"dir":""}" onclick="ordenaTabela('tb-corr',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    corrG.map(o=>{const sp=splitOpOS(o.operacao);
+      const busca = [o.num_ordem,o.equipamento,o.prioridade,sp.op,sp.cid,o.descricao].join(" ").toLowerCase();
+      return `<tr data-busca="${esc(busca)}" data-op="${esc(sp.op+" / "+sp.cid)}" data-prio="${esc((o.prioridade||"").slice(0,1))}"><td class="num">${esc(o.num_ordem)}</td><td class="num">${esc(o.equipamento)}</td>
+      <td>${esc(o.prioridade||"—")}</td>
+      <td>${esc(sp.op)}</td><td>${esc(sp.cid)}</td>
+      <td>${esc((o.descricao||"").split("|")[1]?.trim()||o.descricao||"").slice(0,60)}</td>
+      <td class="dir num"><span class="tag ${o.dias_aberto>=90?"verm":o.dias_aberto>=30?"ambar":"verde"}">${o.dias_aberto??"—"}</span></td></tr>`}).join("") +
+    `</table></div></section>`;
+
+  const prevG = prevTodas.filter(o=>o.aderencia<0);
+  const prevEmDia = prevTodas.length - prevG.length;
+  h += `<div class="grid-big">
+    ${big("Preventivas abertas", prevTodas.length, opCP||"todas as operações", "")}
+    ${big("Atrasadas", prevG.length, "aderência negativa", prevG.length>20?"bad":prevG.length>8?"warn":"ok")}
+    ${big("Em dia / antecipadas", prevEmDia, "aderência positiva", "ok")}
+  </div>`;
+  h += `<section><h2 style="display:flex;align-items:center;gap:12px">Preventivas mais estouradas${btnExcel('tb-top-prev','top_preventivas_'+G.toLowerCase())}</h2>
+    <div class="nota">Top 10 por horas vencidas, de ${prevG.length} atrasadas.</div>
+    <table id="tb-top-prev"><tr><th>OS</th><th>Ativo</th><th>Operação</th><th>Cidade</th><th class="dir">Horas venc.</th></tr>` +
+    prevG.slice(0,10).map(o=>{const sp=splitOpOS(o.operacao);
+      return `<tr><td class="num">${esc(o.num_ordem)}</td><td class="num">${esc(o.equipamento)}</td>
+      <td>${esc(sp.op)}</td><td>${esc(sp.cid)}</td>
+      <td class="dir num"><span class="tag verm">${Math.round(o.aderencia).toLocaleString("pt-BR")}</span></td></tr>`}).join("") +
+    `</table>
+    <div class="nota" style="margin:16px 0 6px"><b style="color:var(--navy)">Preventivas atrasadas por operação</b></div>`;
+  const contP = {};
+  prevG.forEach(o=>{const sp=splitOpOS(o.operacao); const k=sp.op+" "+sp.cid; contP[k]=(contP[k]||0)+1;});
+  const don = Object.entries(contP).map(([nome,qtd])=>({nome,qtd})).sort((a,b)=>b.qtd-a.qtd).slice(0,8);
+  h += svgDonut(don) + `</section>`;
+
+  const opsPrev = opsDe(prevG, o=>{const sp=splitOpOS(o.operacao); return sp.op+" / "+sp.cid;});
+  h += `<section><h2>Todas as preventivas atrasadas (${prevG.length})</h2>
+    ${toolbar('tb-prev','🔎 Buscar preventiva…', opsPrev, prevG.length+' atrasadas · ordenado por horas vencidas', 'preventivas_'+G.toLowerCase())}
+    <div class="rolagem"><table id="tb-prev">
+    <tr>${["OS","Ativo","Operação","Cidade","Hor. revisão","Hor. atual","Horas venc."].map((t,i)=>
+      `<th class="${i>=4?"dir":""}" onclick="ordenaTabela('tb-prev',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    prevG.map(o=>{const sp=splitOpOS(o.operacao);
+      const busca = [o.num_ordem,o.equipamento,sp.op,sp.cid].join(" ").toLowerCase();
+      return `<tr data-busca="${esc(busca)}" data-op="${esc(sp.op+" / "+sp.cid)}"><td class="num">${esc(o.num_ordem)}</td><td class="num">${esc(o.equipamento)}</td>
+      <td>${esc(sp.op)}</td><td>${esc(sp.cid)}</td>
+      <td class="dir num">${o.hor_revisao??"—"}</td><td class="dir num">${o.hor_acumulado??"—"}</td>
+      <td class="dir num"><span class="tag verm">${Math.round(o.aderencia).toLocaleString("pt-BR")}</span></td></tr>`}).join("") +
+    `</table></div></section>`;
+  return h;
+}
+
+function ordenaTabela(id, col){
+  const tabela = document.getElementById(id);
+  let linhas = [...tabela.querySelectorAll("tr[data-busca]")];
+  if(!linhas.length) linhas = [...tabela.querySelectorAll("tr")].filter(tr=>!tr.querySelector("th") && !tr.classList.contains("total"));
+  const chave = "dir"+col;
+  const dir = tabela.dataset[chave] === "asc" ? "desc" : "asc";
+  Object.keys(tabela.dataset).forEach(k=>{ if(k.startsWith("dir")) delete tabela.dataset[k]; });
+  tabela.dataset[chave] = dir;
+  const val = tr => { const td = tr.children[col]; if(!td) return "";
+    return td.dataset.v !== undefined ? td.dataset.v : (td.textContent||"").trim(); };
+  const num = s => { const n = parseFloat(String(s).replace(/\./g,"").replace(",",".").replace(/[^\d.-]/g,"")); return isNaN(n)?null:n; };
+  const numerica = linhas.filter(tr=>val(tr)!=="—").every(tr=>num(val(tr))!==null) && linhas.some(tr=>num(val(tr))!==null);
+  linhas.sort((a,b)=>{
+    const va = val(a), vb = val(b);
+    let r;
+    if(numerica) r = (num(va)??-Infinity) - (num(vb)??-Infinity);
+    else r = va.localeCompare(vb, "pt-BR");
+    return dir==="asc" ? r : -r;
+  });
+  linhas.forEach(tr=>tabela.appendChild(tr));
+  const totalRow = tabela.querySelector("tr.total");
+  if(totalRow) tabela.appendChild(totalRow);
+  tabela.querySelectorAll("th").forEach((t,i)=>{
+    t.classList.remove("ord-asc","ord-desc");
+    if(i===col) t.classList.add(dir==="asc"?"ord-asc":"ord-desc");
+  });
+}
+
+function filtraTabela(id){
+  const t = (document.getElementById("busca-"+id)?.value||"").toLowerCase().trim();
+  const op = opSel[id]||"";
+  const pr = prioSel[id]||"";
+  document.querySelectorAll(`#${id} tr[data-busca]`).forEach(tr=>{
+    const okT = !t || tr.dataset.busca.includes(t);
+    const okO = !op || tr.dataset.op === op;
+    const okP = !pr || (tr.dataset.prio||"").startsWith(pr);
+    tr.style.display = okT && okO && okP ? "" : "none";
+  });
+}
+function exportaCSV(id, nome){
+  const tabela = document.getElementById(id);
+  if(!tabela) return;
+  const linhas = [];
+  const ths = [...tabela.querySelectorAll("th")].map(t=>t.textContent.replace(/[▲▼]/g,"").trim());
+  linhas.push(ths.join(";"));
+  tabela.querySelectorAll("tr").forEach(tr=>{
+    if(tr.style.display==="none" || !tr.querySelector("td")) return;
+    linhas.push([...tr.children].map(td=>'"'+td.textContent.trim().replace(/"/g,'""').replace(/\s+/g," ")+'"').join(";"));
+  });
+  const blob = new Blob(["\ufeff"+linhas.join("\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nome+".csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function btnExcel(id, nome){
+  return `<button class="btn-excel" style="margin-left:auto;padding:5px 12px;font-size:11.5px" onclick="exportaCSV('${id}','${nome}')">⬇ Excel</button>`;
+}
+function toolbar(id, placeholder, opcoes, info, nomeArq){
+  return `<div class="toolbar">
+    <input class="busca" id="busca-${id}" placeholder="${placeholder}" oninput="filtraTabela('${id}')">
+    ${opcoes && opcoes.length ? selOpInline(id, opcoes) : ""}
+    <span class="info">${info}</span>
+    <button class="btn-excel" onclick="exportaCSV('${id}','${nomeArq}')">⬇ Excel</button>
+  </div>`;
+}
+function selOpInline(id, opcoes){
+  return `<select class="mes" onchange="opSel['${id}']=this.value;filtraTabela('${id}')">
+    <option value="">Todas as operações</option>` +
+    opcoes.map(o=>`<option value="${esc(o)}" ${opSel[id]===o?"selected":""}>${esc(o)}</option>`).join("") +
+    `</select>`;
+}
+function selOp(id, opcoes){
+  return `<select class="mes" style="margin:0 0 10px 8px" onchange="opSel['${id}']=this.value;filtraTabela('${id}')">
+    <option value="">Todas as operações</option>` +
+    opcoes.map(o=>`<option value="${esc(o)}" ${opSel[id]===o?"selected":""}>${esc(o)}</option>`).join("") +
+    `</select>`;
+}
+function opsDe(linhas, fn){
+  return [...new Set(linhas.map(fn))].sort();
+}
+
+/* ---------- EPI ---------- */
+function gerEPI(G){
+  const epiL = D.epi.filter(e=>e.gerente===G);
+  if(!epiL.length) return `<section><h2>EPI</h2><div class="nota">Nenhuma operação de EPI mapeada para este gerente ainda.</div></section>`;
+  let h = `<section><h2 style="display:flex;align-items:center;gap:12px">EPI por operação${btnExcel('tb-epiop','epi_operacoes_'+G.toLowerCase())}</h2>
+    <table id="tb-epiop"><tr><th>Operação</th><th>Cidade</th><th class="dir">Funcionários</th><th class="dir">Com atraso</th><th class="dir">% em dia</th></tr>` +
+    agrupaEpi(epiL).sort((a,b)=>a.ok-b.ok).map(e=>
+      `<tr><td>${esc(e.op)}</td><td>${esc(e.cid)}</td>
+      <td class="dir num">${e.at}</td><td class="dir num">${e.atr}</td>
+      <td class="dir num"><span class="tag ${e.ok>=80?"verde":e.ok>=60?"ambar":"verm"}">${e.ok}%</span></td></tr>`).join("") +
+    `</table>
+    <div class="nota" style="margin:16px 0 6px"><b style="color:var(--navy)">EPIs que mais atrasam</b> — itens vencidos nas operações do gerente.</div>`;
+  const contE = {};
+  D.epiItens.filter(e=>e.gerente===G).forEach(e=>{ contE[e.epi]=(contE[e.epi]||0)+ +e.qtde; });
+  const parE = Object.entries(contE).map(([nome,qtd])=>({nome: nome.length>26?nome.slice(0,24)+"…":nome, qtd}))
+    .sort((a,b)=>b.qtd-a.qtd).slice(0,10);
+  h += svgPareto(parE) + `</section>`;
+
+  // colaboradores com EPI em atraso
+  const colab = D.epiColab.filter(c=>c.gerente===G).sort((a,b)=>b.pior_atraso_dias-a.pior_atraso_dias);
+  const opsColab = opsDe(colab, c=>{const sp=splitOpEPI(c.operacao); return sp.op+" / "+sp.cid;});
+  h += `<section><h2>Colaboradores com EPI em atraso (${colab.length})</h2>
+    <div class="nota">Última coleta por operação. Filtre por nome, função ou operação; clique nos títulos para ordenar.</div>
+    ${toolbar('tb-colab','🔎 Buscar colaborador…', opsColab, colab.length+' colaboradores · ordenado por atraso', 'epi_colaboradores_'+G.toLowerCase())}
+    <div class="rolagem"><table id="tb-colab">
+    <tr>${["Colaborador","Função","Itens","Pior atraso (dias)"].map((t,i)=>
+      `<th class="${i>=2?"dir":""}" onclick="ordenaTabela('tb-colab',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    colab.map(c=>{const sp=splitOpEPI(c.operacao);
+      const busca = [c.funcionario,c.funcao,sp.op,sp.cid,c.epis].join(" ").toLowerCase();
+      return `<tr data-busca="${esc(busca)}" data-op="${esc(sp.op+" / "+sp.cid)}">
+      <td><div class="cel-main">${esc(c.funcionario)}</div><div class="cel-sub">${esc(sp.op)} - ${esc(sp.cid)}</div></td>
+      <td>${esc(c.funcao||"—")}</td>
+      <td class="dir num" title="${esc(c.epis||"")}">${c.itens_atraso}</td>
+      <td class="dir num"><span class="tag ${c.pior_atraso_dias>=60?"verm":c.pior_atraso_dias>=15?"ambar":"verde"}">${c.pior_atraso_dias}</span></td></tr>`}).join("") +
+    `</table></div></section>`;
+  return h;
+}
+
+/* ---------- Pessoas ---------- */
+function gerPessoas(G){
+  if(!D.rhAbs.length && !D.rhDesl.length){
+    return `<section><h2>Pessoas</h2><div class="nota">Aguardando a primeira coleta do robô de RH (coletor_rh.py).</div></section>`;
+  }
+  const temMes = D.rhAbsMes.length > 0;
+  if(pessPer==="mes" && !temMes) pessPer = "ano";
+  const baseAbs = pessPer==="mes" ? D.rhAbsMes : D.rhAbs;
+  const baseTov = pessPer==="mes" ? D.rhDeslMes : D.rhDesl;
+  const selPer = `<select class="mes" onchange="pessPer=this.value;render(abaAtual)" style="margin-left:12px">
+    <option value="ano" ${pessPer==="ano"?"selected":""}>Acumulado do ano</option>
+    <option value="mes" ${pessPer==="mes"?"selected":""} ${temMes?"":"disabled"}>Mês corrente${temMes?"":" (após próxima coleta)"}</option>
+  </select>`;
+  const opRH = local => {
+    const sp = splitOpEPI(local||"—");
+    if(/^YARA/i.test(sp.op) && (/CUBAT/i.test(sp.cid) || /GESSO/i.test(sp.op)))
+      return {op:"YARA", cid:"CUBATÃO"};
+    return sp;
+  };
+  const absG = baseAbs.map(r=>({...r, g: D.gerDe(r.local)})).filter(r=>r.g===G);
+  const tovG = baseTov.map(r=>({...r, g: D.gerDe(r.local)})).filter(r=>r.g===G);
+  const agg = {};
+  const pegaAgg = local => {
+    const sp = opRH(local), k = sp.op+" / "+sp.cid;
+    if(!agg[k]) agg[k] = {op:sp.op, cid:sp.cid, n:0, prev:0, nao:0, leg:0, custo:0, desl:0, vol:0, inv:0, tov:null, tovN:0};
+    return agg[k];
+  };
+  absG.forEach(r=>{ const a = pegaAgg(r.local);
+    a.n++; a.prev += +r.h_previstas||0; a.nao += +r.nao_abonadas||0;
+    a.leg += +r.leg_justificados||0; a.custo += +r.custo_abs||0; });
+  tovG.forEach(r=>{ const a = pegaAgg(r.local);
+    a.desl += +r.desligamentos||0; a.vol += +r.voluntarios||0; a.inv += +r.involuntarios||0;
+    if(r.turnover_acum!=null){ a.tov = (a.tov||0) + +r.turnover_acum; a.tovN++; } });
+  const ops2 = Object.values(agg).map(a=>({...a, pct: a.prev? Math.round(1000*(a.nao+a.leg)/a.prev)/10 : null,
+    tovMed: a.tovN===1? a.tov : null}));
+  const hPrev = absG.reduce((s,r)=>s+(+r.h_previstas||0),0);
+  const hNao  = absG.reduce((s,r)=>s+(+r.nao_abonadas||0)+(+r.leg_justificados||0),0);
+  const absPct = hPrev ? Math.round(1000*hNao/hPrev)/10 : null;
+  const custoAbs = absG.reduce((s,r)=>s+(+r.custo_abs||0),0);
+  const desl = tovG.reduce((s,r)=>s+(+r.desligamentos||0),0);
+  const vol  = tovG.reduce((s,r)=>s+(+r.voluntarios||0),0);
+  const inv  = tovG.reduce((s,r)=>s+(+r.involuntarios||0),0);
+
+  let h = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+    <span style="font-size:13px;font-weight:700;color:var(--muted)">Período:</span>${selPer}</div>
+  <div class="grid-big">
+    ${big("Operações", absG.length, pessPer==="mes"?"com ponto no mês corrente":"com ponto no acumulado do ano", "")}
+    ${big("Absenteísmo", absPct!=null? absPct.toLocaleString("pt-BR",{maximumFractionDigits:1})+"%":"—",
+        hNao.toLocaleString("pt-BR",{maximumFractionDigits:0})+"h ausentes (faltas + atestados) de "+hPrev.toLocaleString("pt-BR",{maximumFractionDigits:0})+"h",
+        absPct==null?"":absPct<=4.6?"ok":absPct<=8?"warn":"bad")}
+    ${big("Custo do absenteísmo", fmtAuto(custoAbs), "no período (soma dos locais)", custoAbs>2e5?"bad":custoAbs>5e4?"warn":"")}
+    ${big("Desligamentos", desl, vol+" voluntários · "+inv+" involuntários", desl>30?"bad":desl>12?"warn":"ok")}
+  </div>`;
+
+  // absenteísmo por operação (invertido: menor = melhor)
+  const barsAbs = ops2.filter(a=>a.prev>0).sort((a,b)=>b.prev-a.prev).slice(0,8)
+    .map(a=>({rot: a.op.slice(0,11), sub: Math.round(a.prev).toLocaleString("pt-BR")+"h prev.", v: a.pct}));
+  const maxAbs = Math.max(10, ...barsAbs.map(b=>b.v))*1.25;
+  h += `<section><h2>Absenteísmo por operação</h2>
+    <div class="nota">% de absenteísmo dos maiores locais (verde ≤ 4,6%).</div>
+    ${svgVBarPct(barsAbs, {inv:true, max:Math.ceil(maxAbs)})}
+  </section>`;
+
+  // turnover: rosca voluntário x involuntário + pareto de desligamentos por local
+  const donTov = [{nome:"Involuntário", qtd: inv},{nome:"Voluntário", qtd: vol}].filter(x=>x.qtd>0);
+  const parDesl = ops2.filter(a=>a.desl>0).sort((a,b)=>b.desl-a.desl).slice(0,8)
+    .map(a=>({nome: a.op.slice(0,16), qtd: a.desl}));
+  h += `<div class="duas">
+    <section><h2>Desligamentos por tipo</h2><div class="nota">Acumulado do período.</div>${svgDonut(donTov, "deslig.")}</section>
+    <section><h2>Desligamentos por operação</h2><div class="nota">Onde o time mais girou.</div>${svgPareto(parDesl)}</section>
+  </div>`;
+
+  // quadro por local: pessoas em uma linha por operação
+  const opsPess = ops2.map(a=>a.op+" / "+a.cid).sort();
+  h += `<section><h2>Pessoas por operação</h2>
+    ${toolbar('tb-pess','🔎 Buscar operação…', opsPess, ops2.length+' operações · ordenado por % abs', 'pessoas_'+G.toLowerCase())}
+    <div class="rolagem"><table id="tb-pess">
+    <tr>${["Operação","H. previstas","Não abonadas","% Abs.","Custo abs.","Desligamentos","Turnover acum."].map((t,i)=>
+      `<th class="${i>=1?"dir":""}" onclick="ordenaTabela('tb-pess',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    ops2.sort((a,b)=>(b.pct||0)-(a.pct||0)).map(a=>{
+      const busca = [a.op, a.cid].join(" ").toLowerCase();
+      const pa = a.pct||0;
+      return `<tr data-busca="${esc(busca)}" data-op="${esc(a.op+" / "+a.cid)}">
+      <td><div class="cel-main">${esc(a.op)}${a.n>1? ` <span class="tag" style="background:#EDF1FA;color:#3552A6">${a.n} locais</span>`:""}</div><div class="cel-sub">${esc(a.cid)}</div></td>
+      <td class="dir num">${Math.round(a.prev).toLocaleString("pt-BR")}h</td>
+      <td class="dir num">${Math.round(a.nao).toLocaleString("pt-BR")}h</td>
+      <td class="dir num"><span class="tag ${pa<=4.6?"verde":pa<=8?"ambar":"verm"}">${pa.toLocaleString("pt-BR")}%</span></td>
+      <td class="dir num">${fmtAuto(a.custo)}</td>
+      <td class="dir num">${a.desl||0}</td>
+      <td class="dir num">${a.tovMed!=null? (Math.round(a.tovMed*10)/10).toLocaleString("pt-BR")+"%" : "—"}</td></tr>`}).join("") +
+    `</table></div>
+    <div class="nota" style="margin-top:10px">Dados agregados por local de trabalho (Portal RH). Lista nominal de colaboradores: próxima evolução do robô.</div>
+  </section>`;
+  return h;
+}
+
+/* ---------- Faturamento ---------- */
+function gerFaturamento(G){
+  if(!D.fat.length){
+    return `<section><h2>Faturamento</h2><div class="nota">Aguardando a primeira coleta da fonte de Faturamento (roda nas coletas de 08:20/16:30, ou manualmente: <b>--so faturamento</b>).</div></section>`;
+  }
+  const fatG = D.fat.filter(f=>f.gerente===G);
+  if(!fatG.length){
+    return `<section><h2>Faturamento</h2><div class="nota">Nenhum contrato do faturamento casou com os contratos deste gerente (o vínculo usa o nº de contrato do cadastro RxO).</div></section>`;
+  }
+  const tot = fatG.reduce((s,f)=>s+(+f.total||0),0);
+  const pend = fatG.reduce((s,f)=>s+(+f.pendente||0),0);
+  const pPend = pct(pend, tot);
+  let h = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));max-width:420px">
+    ${big("Em aberto", fmtAuto(pend), (pPend??"—")+"% do total ainda por faturar · "+fatG.filter(f=>+f.pendente>0).length+" projetos", pend>0? (pPend>8?"bad":"warn"):"ok")}
+  </div>`;
+
+  const pendentes = fatG.filter(f=>+f.pendente>0).sort((a,b)=>b.pendente-a.pendente);
+  if(pendentes.length){
+    h += `<section><h2>Pendências de faturamento</h2>
+      <div class="nota">${pendentes.length} projetos com valor em aberto. NF: o export atual não traz o nº da fatura — entra quando plugarmos o Detalhamento Carteira.</div>
+      <div class="rolagem"><table id="tb-pend">
+      <tr>${["Operação","Contrato","NF","Valor em aberto"].map((t,i)=>
+        `<th class="${i===3?"dir":""}" onclick="ordenaTabela('tb-pend',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+      pendentes.map(f=>`<tr data-busca="${esc([f.ref_cliente,f.cliente,f.contrato].join(" ").toLowerCase())}">
+        <td><div class="cel-main">${esc(f.ref_cliente||"—")}</div><div class="cel-sub">${esc(f.cliente||"—")}</div></td>
+        <td class="num">${esc(f.contrato||"—")}</td>
+        <td class="num">—</td>
+        <td class="dir num" data-v="${+f.pendente||0}"><span class="tag ${+f.pendente>2e5?"verm":"ambar"}">${fmtAuto(+f.pendente)}</span></td></tr>`).join("") +
+      `</table></div></section>`;
+  }
+
+  h += `<section><h2>Faturamento por projeto</h2>
+    ${toolbar('tb-fat','🔎 Buscar projeto, cliente, contrato…', null, fatG.length+' projetos · ordenado por pendente', 'faturamento_'+G.toLowerCase())}
+    <div class="rolagem"><table id="tb-fat">
+    <tr>${["Projeto","Contrato","Faturado","Pendente","Total"].map((t,i)=>
+      `<th class="${i>=2?"dir":""}" onclick="ordenaTabela('tb-fat',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    fatG.sort((a,b)=>(+b.pendente||0)-(+a.pendente||0)).map(f=>{
+      const busca = [f.ref_cliente,f.cliente,f.contrato].join(" ").toLowerCase();
+      return `<tr data-busca="${esc(busca)}">
+      <td><div class="cel-main">${esc(f.ref_cliente||"—")}</div><div class="cel-sub">${esc(f.cliente||"—")}</div></td>
+      <td class="num">${esc(f.contrato||"—")}</td>
+      <td class="dir num" data-v="${+f.faturado||0}">${fmtAuto(+f.faturado||0)}</td>
+      <td class="dir num" data-v="${+f.pendente||0}">${+f.pendente>0? `<span class="tag ${+f.pendente>2e5?"verm":"ambar"}">${fmtAuto(+f.pendente)}</span>` : `<span class="tag verde">R$ 0</span>`}</td>
+      <td class="dir num destaque" data-v="${+f.total||0}">${fmtAuto(+f.total||0)}</td></tr>`}).join("") +
+    `</table></div></section>`;
+  return h;
+}
+
+/* ---------- Frota (mapa) ---------- */
+function gerFrota(G){
+  const fr = D.frota.filter(f=>f.gerente===G);
+  const agora = Date.now();
+  const validas = fr.map(f=>f.location_datetime||f.snapshot_date)
+    .filter(d=>d && new Date(d).getTime() <= agora + 864e5).sort();
+  const ultima = validas.pop();
+  const ultimaTxt = ultima ? new Date(ultima).toLocaleDateString("pt-BR") : "—";
+  const gpsSet = new Set(fr.map(f=>f.ativo));
+  const cadastro = D.equipG ? D.equipG[G]||[] : [];
+  const semGps = cadastro.filter(e=>!gpsSet.has(e.ativo));
+  const pctGps = cadastro.length ? Math.round(100*fr.length/cadastro.length) : null;
+  let h = `<div class="grid-big">
+    ${big("Máquinas no mapa", fr.length, cadastro.length? `de ${cadastro.length} ativos no cadastro (${pctGps}%)` : "com última posição conhecida", fr.length? "ok":"bad")}
+    ${big("Sem rastreamento", semGps.length, "ativos do cadastro sem posição conhecida", semGps.length>cadastro.length*0.4?"bad":semGps.length?"warn":"ok")}
+  </div>`;
+  if(!fr.length){
+    h += `<section><h2>Frota no mapa</h2><div class="nota">Nenhuma posição de telemetria mapeada para este gerente ainda. O coletor de telemetria (portal TOTAL) está aguardando reativação.</div></section>`;
+    return h;
+  }
+  // quadro de todos os ativos do gerente, pesquisável e ordenável
+  const frMap = Object.fromEntries(fr.map(f=>[f.ativo, f]));
+  h += `<section><h2>Ativos do gerente (${cadastro.length})</h2>
+    <div class="nota">Cadastro oficial da BU. Digite para filtrar; clique nos títulos para ordenar — a coluna Rastreamento denuncia quem está sem sinal.</div>
+    ${(()=>{const opsFr = opsDe(cadastro.filter(e=>e.nome_cl), e=>{const sp=splitOpEPI(e.nome_cl); return sp.op+" / "+sp.cid;});
+      return toolbar('tb-frota','🔎 Buscar ativo…', opsFr, cadastro.length+' ativos no cadastro', 'ativos_'+G.toLowerCase());})()}
+    <div class="rolagem"><table id="tb-frota">
+    <tr>${["Ativo","Horímetro","Marca/Modelo","Operação","Última posição","Fonte"].map((t,i)=>
+      `<th class="${i===1?"dir":""}" onclick="ordenaTabela('tb-frota',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    cadastro.map(e=>{
+      const g = frMap[e.ativo];
+      const dt = g && (g.location_datetime||g.snapshot_date);
+      const dtTxt = dt ? new Date(dt).toLocaleDateString("pt-BR") : "—";
+      const fonte = g ? (g.location_source||"?").toUpperCase() : "—";
+      const spo = e.nome_cl ? splitOpEPI(e.nome_cl) : null;
+      const busca = [e.ativo,e.descricao,e.marca,e.modelo,e.nome_cl,fonte].join(" ").toLowerCase();
+      const hor = D.horIdx[e.ativo];
+      const horTel = g && g.hourmeter ? +g.hourmeter : null;
+      const horV = hor ? +hor.horimetro_acumulado : horTel;
+      const horData = hor ? new Date(hor.data_leitura+"T12:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) : (horTel? "tel." : "");
+      return `<tr data-busca="${esc(busca)}" data-op="${spo?esc(spo.op+" / "+spo.cid):""}">
+      <td class="num"><div class="cel-main">${esc(e.ativo)}</div><div class="cel-sub">${esc(e.descricao||"—")}</div></td>
+      <td class="dir num">${horV!=null? `<div class="cel-main">${Math.round(horV).toLocaleString("pt-BR")} h</div><div class="cel-sub">${horData}</div>` : "—"}</td>
+      <td>${esc([e.marca,e.modelo].filter(Boolean).join(" ")||"—")}</td>
+      <td>${spo?esc(spo.op+" - "+spo.cid):"—"}</td>
+      <td class="num">${g?dtTxt:'<span class="tag verm">sem sinal</span>'}</td>
+      <td>${esc(fonte)}</td></tr>`}).join("") +
+    `</table></div></section>`;
+
+  const dias = d => Math.floor((Date.now()-new Date(d).getTime())/864e5);
+  const desatualizado = ultima && dias(ultima) > 3;
+  h += `<section><h2>Frota no mapa</h2>
+    <div class="nota">${desatualizado? `⚠ Posições de ${ultimaTxt} — o coletor de telemetria está parado; as máquinas podem ter se movido desde então. `:""}Clique no ponto para detalhes. Verde = sinal recente · âmbar = 3–7 dias · vermelho = 7+ dias.</div>
+    <div id="mapa-frota" style="height:520px;border-radius:8px;border:1px solid var(--border)"></div>
+  </section>`;
+  return h;
+}
+let mapaLeaflet = null;
+function initMapaFrota(G){
+  const el = document.getElementById("mapa-frota");
+  if(!el || typeof L === "undefined") return;
+  const fr = D.frota.filter(f=>f.gerente===G && f.latitude && f.longitude);
+  if(mapaLeaflet){ mapaLeaflet.remove(); mapaLeaflet = null; }
+  const mapa = L.map("mapa-frota").setView([-15.5, -52], 4);
+  mapaLeaflet = mapa;
+  const cinza = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    {attribution:"© Esri", maxZoom: 16});
+  const satelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    {attribution:"© Esri", maxZoom: 18});
+  const ruas = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    {attribution:"© Esri", maxZoom: 18});
+  ruas.addTo(mapa);
+  L.control.layers({"Mapa": ruas, "Satélite": satelite, "Cinza": cinza}, null, {position:"topright"}).addTo(mapa);
+  const dias = d => d? Math.floor((Date.now()-new Date(d).getTime())/864e5) : 999;
+  const pts = [];
+  fr.forEach(f=>{
+    const dd = dias(f.location_datetime||f.snapshot_date);
+    const cor = dd<=2 ? "#00A843" : dd<=7 ? "#D97706" : "#d63131";
+    const m = L.circleMarker([f.latitude, f.longitude],
+      {radius:7, color:"#fff", weight:1.5, fillColor:cor, fillOpacity:.9}).addTo(mapa);
+    m.bindPopup(`<div style="font-family:'Open Sans';font-size:12px;line-height:1.5">
+      <b style="font-family:Montserrat;color:#002A9A">${esc(f.ativo)}</b><br>
+      ${esc(f.description||f.model||"")}<br>
+      <b>Operação:</b> ${esc(f.nome_cl||"—")}<br>
+      <b>Horímetro:</b> ${f.hourmeter? (+f.hourmeter).toLocaleString("pt-BR")+" h":"—"}<br>
+      <b>Posição:</b> ${f.location_datetime? new Date(f.location_datetime).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"—"}
+      · fonte ${esc((f.location_source||"?").toUpperCase())}</div>`);
+    pts.push([f.latitude, f.longitude]);
+  });
+  if(pts.length) mapa.fitBounds(pts, {padding:[18,18], maxZoom: 12});
+}
+
+/* ================= navegação ================= */
+function abaLinks(){
+  const CTID = "7e4058f3-1c1f-4c3a-8151-03d3a2c3c30c";
+  const pbi = id => `https://app.powerbi.com/reportEmbed?reportId=${id}&autoAuth=true&ctid=${CTID}`;
+  const grupos = [
+    {t:"Power BI — Relatórios oficiais", itens:[
+      {n:"RxO / Resultado Financeiro", d:"Razão completo, base orçamento, resultado por CL — a fonte contábil do CCO.", u:pbi("187eda63-27ab-48ae-abe7-c1de44ef643c")},
+      {n:"Faturamento por Projetos", d:"Composição do faturamento, pendências e carteira por contrato.", u:pbi("7b591823-f5f2-498a-9b1f-8783e0ce69b2")},
+      {n:"Custos de Manutenção", d:"Acompanhamento diário de custos por ativo e operação.", u:pbi("0b36cf9b-6b4e-4d35-bc4d-395546781308")},
+      {n:"OS's de Manutenção", d:"Corretivas e preventivas abertas — o pulso das oficinas.", u:pbi("b915c964-3166-4222-a97d-c11b8cade7c4")},
+    ]},
+    {t:"Portais", itens:[
+      {n:"Portal RH — Analytics", d:"Turnover, absenteísmo, horas extras e visão geral de gente.", u:"https://portalrh.armac.com.br/analises"},
+      {n:"Portal Total — Telemetria", d:"Horímetros, posições e status da frota conectada.", u:"https://total.armac.com.br"},
+      {n:"MOB Controle — EPI", d:"Entregas de EPI por colaborador e operação.", u:"https://armac.mobsolucoesdigitais.com.br"},
+    ]},
+  ];
+  return grupos.map(g=>`<section><h2>${g.t}</h2>
+    <div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">` +
+    g.itens.map(it=>`<a href="${it.u}" target="_blank" rel="noopener" style="text-decoration:none">
+      <div class="big" style="height:100%;cursor:pointer">
+        <div class="big-t" style="display:flex;justify-content:space-between;align-items:center">${esc(it.n)}<span style="color:var(--title)">↗</span></div>
+        <div class="big-s" style="margin-top:6px">${esc(it.d)}</div>
+      </div></a>`).join("") +
+    `</div></section>`).join("");
+}
+
+function render(aba){
+  abaAtual = aba;
+  document.querySelectorAll("aside button").forEach(b=>b.classList.toggle("ativo", b.dataset.aba===aba));
+  document.getElementById("migalha").innerHTML = aba==="Diretoria"
+    ? `CCO PORTOS / <b>VISÃO GERAL</b>`
+    : aba==="Links"
+    ? `CCO PORTOS / <b>LINKS ESTRATÉGICOS</b>`
+    : `CCO PORTOS / GERENTES / <b>${esc(nomeCompleto(aba).toUpperCase())}</b>${subAba!=="Resumo"?" / "+esc(subAba.toUpperCase()):""}`;
+  document.getElementById("titulo-pagina").textContent = aba==="Diretoria" ? "Diretoria" : aba==="Links" ? "Links Estratégicos" : nomeCompleto(aba);
+  const sub = document.getElementById("subabas");
+  const c = document.getElementById("conteudo");
+  if(aba==="Diretoria"){
+    sub.style.display="none";
+    c.innerHTML = avisoColetores() + abaDiretoria();
+  } else if(aba==="Links"){
+    sub.style.display="none";
+    c.innerHTML = abaLinks();
+  } else {
+    sub.style.display="flex";
+    sub.innerHTML = SUBS.map(s=>`<button data-sub="${s}" class="${s===subAba?"ativo":""}">${s}</button>`).join("");
+    const G = aba.toUpperCase();
+    c.innerHTML = avisoColetores() + (subAba==="Resumo" ? gerResumo(G)
+                : subAba==="DRE" ? gerDRE(G)
+                : subAba==="Corretivas & Preventivas" ? gerOsPrev(G)
+                : subAba==="Pessoas" ? gerPessoas(G)
+                : subAba==="Faturamento" ? gerFaturamento(G)
+                : subAba==="Frota" ? gerFrota(G)
+                : gerEPI(G));
+    if(subAba==="Frota") setTimeout(()=>initMapaFrota(G), 50);
+  }
+  const ultimo = D.saude.filter(s=>s.sucesso).map(s=>s.executado_em).sort().pop();
+  const elAtu = document.getElementById("menu-atualizacao");
+  if(elAtu && ultimo){
+    const dt = new Date(ultimo.replace(" ","T"));
+    elAtu.textContent = "Última atualização: " +
+      dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) + " às " +
+      dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  }
+  document.getElementById("rodape").textContent = "";
+}
+
+(async function(){
+  const menu = document.getElementById("menu");
+  menu.innerHTML = `<div class="marca">
+    <div class="logo"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAIAAABt+uBvAAAHMUlEQVR42u2cW4idVxXH//+193cuc+aSTBuadBIT01w0Sq1tjTY2kbSoIFiKF0IFwTzYBwXzINYHwVZ8kYLQJ29QMFUEpab0pZaAIoWkxgsaKsmQi7EkYZqSSzO3c/m+vZYPZyY5MyaZM+L3Zc50LzbzdJgz53fW+q//Wt9miG0/Q4ybh0QEEVAEFAFFQBFQBBQBRUAxIqAIKAKKgCKgCCgCioBiREARUAQUAUVAPRG+6DekgV2/2No/+W4C1PIIXaetA2mWpBAwiM0AW76AaJZsuGIrryIz3DyRDGYwCRWbqOBq2cb7NQBJxgRmKJiSLxIPW4l84p/ZA8dQTyC3/KAqah6p43TZvbVSTtyN42vD24NWzuADlACXZ4llTYSpKurlBQBB0YZQa4St57jtrHv076Wjm7PXtujFAauYUYvRpuJFGhCD6EKAZiMQIaGZJhp2vuHvPe1e/XB6ZJOVQIHB8sa05Ns8AZoKTZ1NVlrlLPvi66XH/+xNABaQQr3ig8yoEGOg1X22e1T2HHHBoMxbiwovMSOU0K4/1jzfRBgY3inr/ceTuoQDH0M5zVWwfcF0XClYrQUSogt5RKoBaYKMpM2RGmeYqoSHRt3ZO8ORLdbXXATxJQyISDIc2uyOj1iWgHqzb54w0qyv7kbGbfN5DNS1IWYCWgc/hpbznz7qTq/OxvvgNCd/VCAgg4m2Tq1DEMJswVdDKeDKSbf9hOw6Zi4gdHQ+GjIXVkyWdh7Xl7ZrX8ipnTms+myhSeQzlFIrZVjgBJTUErV6CaMjPD/s3n/eymqhQ5VJKuTOyzy2AZMVc5qHGBXexYxQ6eLMaDmdaX+aja61X++iOcLYmSmB2WAL73sTLclJqZd6mzfAlOhv6bERObSVVe34m81MQhBueVs8c9Lp3vBBptRysMNb/NUaXHa9lGjMxFZfwdA4lZ0q/i4zikbzIVwekJNrmKTQDp+tYrUGVzQtuOVgFEkIyS6GBANC0Hl5lL5VE7YHWbve8F2L1Qa0x9s8CScuyzQ0UqRhYdtCYKA810ZbMlVrQebuhAgaSinATm49Bsh7Zg3NpicrQ+UP3X/HB7cMrlk1WCk5u+HizCDCiXrruV8ebzTt2kxKAw02z++YmYjRetUoEqC47Mr0yLrKk088sOczm7duHO7mfRuh9ePfjDbqoL9uKxU3MDuW51jv88ZDUMfrX9lzzw+eeviuVQPtr1xV1WCA8IaTu5G8fKVlJrCssOVh0YBIEKIT088989C+vQ8CIcsycV5I5+hutdowks5JHm17CbV5EdGr9We/s33f3gezTNXgvReityKvDPLOZe/UP//4e7715EfTTL0T9hqaHAER0NQGh5MffnuHmTmZ73tCMJKUG3fltiTb0gCUS4k5T52of/mxjevX3pEFk866MjPAOYqAbZ36ryNCEiVHLgFKuWRQCGSZX3pskxlFOq2wAmqQn/7q6G9fOT057SA3GqAMJFtpWp8yepotL0AkrBnWv7d27wdWkehcQxhA6N6nDr6w/wT6E5C32nIRqPhlmEFChjTduOau/mqt3bCv6Y5zcuDV0y/84lRy98CMEbp1JuqyLDESZkNlD0ANjtfTB8DBw2NMvKmFsERU+Lb4ILNSqaMhzVYMgGazaURvsLkt+yCix+xQvGG21DKIEdAczZkfatZbRZYHIAOYpgrMYdEW5v7+EhXsnUT6/wNqjxKXphptTzSvuD736EajqsJ7cU68o+v6eE8nvPbIbM7JrS/6HAAZSnLy7OT4+PTg4HWv6IQabPeODU9/877vPftXFY/29acus0ksTKLVaLlaw9hxg0/BasYk9BAgSFnGztb/dPTiJx+uqcLNLsfE0QzP7Pv4ro+sfvngufp0oAO6m7WMKmn5bNUOHr6QoGbUa6UrPtNLg5Bc7i/4fOqWGsLzB0Y/tXMdYIDrLDQ1PLJj0yM7Nv0Pv/mPr4288gV1K/vaT4SI2Tt4PqCcy/2FnKZ5lcHKy7/71z++OnbftpGg6jqGeiGD2mK7WQgmjhP1Fmotq3iozgh/m1Bu9jyXNm8ABc2mfe3pQ2mWwkx1jkY44aLkeUakHaUt0tYpz/mKdF4+KKj5wcrrRy584/t/cE5gXAqj+dJy0lkW/FDtJ8+f+vp3D4LqhFmmIZiZRUCzjDQkw5Uf7T+x+4mX/vbGm96LcyRppiFoCLbYo4WnYe43zNTMV8tnzkz8/MXTJ/89VusrDw8l1aoXcSLs/jhHEY5duLL/xTOs+MLSkMX8FzznoJnYZAMOa9b037N+YN1wNUkE2u0zdTNz3p+7OPX7v1xAIoWVaUFL3xCMEtyKshnGLjXHxqYQDGaLfKxsSByrSZEqVthWnGZor1mZUEolctboLdKmF9wNb8NjAzOEmRTogXYWN4oRUAQUAUVAEVAEFAFFQDEioAgoAoqAIqAIKAKKgGJEQBFQBBQBRUC9Ef8BRjGF2Rki+ooAAAAASUVORK5CYII=" alt="Armac"></div>
+    <div class="nome">CCO<span class="sub">Portos</span></div></div>
+    <div class="rotulo-menu">Visão geral</div>
+    <button data-aba="Diretoria">Diretoria</button>
+    <div class="rotulo-menu" style="margin-top:10px">Gerentes</div>` +
+    GERENTES.map(g=>`<button data-aba="${cap(g)}">${nomeCompleto(g)}</button>`).join("") +
+    `<div class="rotulo-menu" style="margin-top:10px">Ferramentas</div>
+    <button data-aba="Links">Links Estratégicos</button>
+    <div id="menu-rodape" style="margin-top:auto;padding:14px 10px 4px;text-align:center">
+      <div id="menu-atualizacao" style="font-size:10.5px;font-weight:600;color:#8FA5DE;letter-spacing:.3px"></div>
+      <div style="font-size:10.5px;font-weight:600;color:#5F7BC7;margin-top:4px;letter-spacing:.4px">Powered by ValinasTech - 2026</div>
+    </div>`;
+  menu.addEventListener("click", e=>{ if(e.target.dataset.aba){ subAba="Resumo"; render(e.target.dataset.aba); }});
+  document.getElementById("subabas").addEventListener("click", e=>{
+    if(e.target.dataset.sub){ subAba=e.target.dataset.sub; render(abaAtual); }});
+  try{
+    await carregar();
+    document.getElementById("carregando").remove();
+    render("Diretoria");
+  }catch(err){
+    document.getElementById("carregando").remove();
+    document.getElementById("conteudo").innerHTML =
+      `<div class="erro">Não consegui ler o banco: ${esc(err.message)}. Confira a conexão e recarregue a página.</div>`;
+  }
+})();
+</script>
+</body>
+</html>
