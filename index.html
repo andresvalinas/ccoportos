@@ -221,7 +221,7 @@ async function carregar(){
     pega("v_cco_resultado_oficial?select=anomes,dre,metrica,valor"),
     pegaTudo("v_cco_epi_colaboradores?select=*"),
     pegaTudo("mv_cco_resultado_operacao?select=*"),
-    pegaTudo("v_cco_horimetro_atual?select=*"),
+    pegaTudo("mv_cco_horimetro_atual?select=*"),
     tenta(pegaTudo("v_cco_fat?select=*")),
     tenta(pegaTudo("v_cco_fat_mes?select=*")),
     tenta(pega("v_cco_rh_kpis?select=*")),
@@ -234,7 +234,7 @@ async function carregar(){
     pega("mv_cco_custo_operacao?select=*"),
     pegaTudo("mv_cco_custo_maquina?select=*"),
     pegaTudo("v_cco_equipamentos?select=ativo,descricao,marca,modelo,nome_cl,gerente"),
-    pegaTudo("v_cco_frota_mapa?select=ativo,description,model,nome_cl,latitude,longitude,location_datetime,location_source,hourmeter,snapshot_date,gerente&gerente=not.is.null"),
+    pegaTudo("mv_cco_frota_mapa?select=ativo,description,model,nome_cl,latitude,longitude,location_datetime,location_source,hourmeter,snapshot_date,gerente&gerente=not.is.null"),
   ]);
   const canon = g => { const u=(g||"").toUpperCase();
     if(u.includes("PEDRO AUGUSTO LEAL")) return "CÁSSIA";
