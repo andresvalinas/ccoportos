@@ -22,7 +22,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 /* ===== layout: sidebar azul-royal com marca (padrão Portal RH) ===== */
 .app{display:flex;align-items:stretch;min-height:100vh}
-aside{width:216px;flex:none;background:var(--royal);padding:0 10px 16px;display:flex;flex-direction:column;gap:4px;
+aside{width:216px;flex:none;padding:0 10px 16px;display:flex;flex-direction:column;gap:4px;
+  background:linear-gradient(180deg, #002A9A 0%, #002A9A 14%, #00227E 48%, #041A66 78%, #071140 100%);
   position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#3552A6 transparent}
 .marca{padding:18px 12px 20px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:12px;display:flex;align-items:center;gap:11px}
 .marca .logo{height:42px;width:42px;flex:none}
@@ -155,7 +156,7 @@ const GERENTES = ["ANDRÉS","CÁSSIA","KASSIANO","MARIANA","UESLEI"];
 const NOMES = {"ANDRÉS":"Andrés Valinas","MARIANA":"Mariana Abreu","CÁSSIA":"Cassia Palmeira",
                "KASSIANO":"Kassiano do Carmo","UESLEI":"Ueslei Mota"};
 const nomeCompleto = g => NOMES[(g||"").toUpperCase()] || cap(g||"");
-const SUBS = ["Resumo","DRE","Pessoas","Faturamento","Corretivas & Preventivas","EPI","Frota"];
+const SUBS = ["Resumo","DRE","Pessoas","Faturamento","Corretivas & Preventivas","EPI","Frota","Seminovos"];
 const cap = s => s[0]+s.slice(1).toLowerCase();
 
 const fmtMi = v => v==null ? "—" : "R$ " + (v/1e6).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}) + " mi";
@@ -205,7 +206,7 @@ async function pega(caminho){
 
 const tenta = pr => pr.catch(()=>[]);
 async function carregar(){
-  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, dre, custoOp, custoMaq, equip, frota] = await Promise.all([
+  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota] = await Promise.all([
     pega("mv_cco_rxo_gerente?select=*"),
     pega("mv_cco_custos_gerente_mes?select=*"),
     pega("v_cco_epi_gerente?select=*"),
@@ -230,6 +231,7 @@ async function carregar(){
     tenta(pegaTudo("v_cco_rh_turnover_local_mes?select=*")),
     tenta(pegaTudo("v_cco_rh_abs_local_mes?select=*")),
     tenta(pega("v_cco_rh_tot?select=*")),
+    tenta(pegaTudo("v_cco_enxoval_bu?select=*")),
     pega("mv_cco_dre_gerente?select=*"),
     pega("mv_cco_custo_operacao?select=*"),
     pegaTudo("mv_cco_custo_maquina?select=*"),
@@ -245,7 +247,7 @@ async function carregar(){
     return null; };
   corr.forEach(o=>o.g=canon(o.gerente));
   prev.forEach(o=>o.g=canon(o.gerente));
-  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes};
+  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx};
   D.rhTot = (rhTot && rhTot[0]) || null;
   D.rhK = (rhKpis && rhKpis[0]) || null;
   const pctNorm = v => { v = +v||0; return v <= 1 ? v*100 : v; };
@@ -1347,6 +1349,46 @@ function gerFaturamento(G){
   return h;
 }
 
+/* ---------- Seminovos (enxoval das lojas) ---------- */
+function gerSeminovos(G){
+  if(!D.enx.length){
+    return `<section><h2>Seminovos</h2><div class="nota">Aguardando a primeira coleta do robô do Enxoval (coletor_enxoval.py). Assim que rodar, esta aba mostra os ativos do gerente que estão nas lojas de seminovos.</div></section>`;
+  }
+  const rows = D.enx.filter(e=>e.gerente===G);
+  if(!rows.length){
+    return `<section><h2>Seminovos</h2><div class="nota">Nenhum ativo deste gerente consta no enxoval das lojas — frota 100% na operação. 🎉</div></section>`;
+  }
+  const neg = rows.filter(r=>/negocia/i.test(r.situacao||""));
+  const disp = rows.filter(r=>/dispon/i.test(r.situacao||""));
+  const man = rows.filter(r=>/manut/i.test(r.situacao||"") || /sim/i.test(r.em_manut||""));
+  let h = `<div class="grid-big">
+    ${big("Nas lojas", rows.length, "ativos do gerente no enxoval de seminovos", rows.length>15?"bad":rows.length>5?"warn":"")}
+    ${big("Em negociação de venda", neg.length, "caminho da desmobilização", neg.length?"ok":"")}
+    ${big("Disponíveis", disp.length, "parados em vitrine (custo até vender)", disp.length>8?"bad":disp.length>3?"warn":"ok")}
+    ${big("Em manutenção", man.length, "preparação para venda", "")}
+  </div>`;
+
+  const lojas = [...new Set(rows.map(r=>r.loja||"—"))].sort();
+  const tagSit = s => /negocia/i.test(s||"") ? "ambar" : /dispon/i.test(s||"") ? "verde" : /manut/i.test(s||"") ? "verm" : "";
+  h += `<section><h2>Ativos nas lojas de seminovos</h2>
+    <div class="nota">Cruzamento enxoval × cadastro RxO: estes ativos seguem no custo da operação até a venda. Fonte: Painel Enxoval (foto diária).</div>
+    ${toolbar('tb-enx','🔎 Buscar ativo, tipo, loja…', lojas, rows.length+' ativos · ordenado por situação', 'seminovos_'+G.toLowerCase())}
+    <div class="rolagem"><table id="tb-enx">
+    <tr>${["Ativo","Loja","Horímetro","Situação","Status no plano","Gerente manutenção"].map((t,i)=>
+      `<th class="${i===2?"dir":""}" onclick="ordenaTabela('tb-enx',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
+    rows.sort((a,b)=>(a.situacao||"").localeCompare(b.situacao||"")).map(r=>{
+      const busca = [r.ativo, r.tipo, r.marca, r.loja, r.situacao].join(" ").toLowerCase();
+      return `<tr data-busca="${esc(busca)}" data-op="${esc(r.loja||"—")}">
+      <td class="num"><div class="cel-main">${esc(r.ativo)}</div><div class="cel-sub">${esc([r.tipo,r.marca,r.ano].filter(Boolean).join(" · "))}</div></td>
+      <td>${esc(r.loja||"—")}</td>
+      <td class="dir num" data-v="${+r.horimetro||0}">${r.horimetro!=null? Math.round(+r.horimetro).toLocaleString("pt-BR")+" h":"—"}</td>
+      <td><span class="tag ${tagSit(r.situacao)}">${esc(r.situacao||"—")}</span></td>
+      <td>${esc(r.status_plano||"—")}</td>
+      <td>${esc(r.gerente_manut||"—")}</td></tr>`}).join("") +
+    `</table></div></section>`;
+  return h;
+}
+
 /* ---------- Frota (mapa) ---------- */
 function gerFrota(G){
   const fr = D.frota.filter(f=>f.gerente===G);
@@ -1493,6 +1535,7 @@ function render(aba){
                 : subAba==="Pessoas" ? gerPessoas(G)
                 : subAba==="Faturamento" ? gerFaturamento(G)
                 : subAba==="Frota" ? gerFrota(G)
+                : subAba==="Seminovos" ? gerSeminovos(G)
                 : gerEPI(G));
     if(subAba==="Frota") setTimeout(()=>initMapaFrota(G), 50);
   }
