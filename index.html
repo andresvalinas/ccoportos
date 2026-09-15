@@ -23,7 +23,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 /* ===== layout: sidebar azul-royal com marca (padrão Portal RH) ===== */
 .app{display:flex;align-items:stretch;min-height:100vh}
 aside{width:216px;flex:none;padding:0 10px 16px;display:flex;flex-direction:column;gap:4px;
-  background:linear-gradient(180deg, #002A9A 0%, #002A9A 14%, #00227E 48%, #041A66 78%, #071140 100%);
+  background:linear-gradient(165deg, #061638 0%, #04216E 28%, #002A9A 52%, #0B3FC4 82%, #1150E0 100%);
   position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#3552A6 transparent}
 .marca{padding:18px 12px 20px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:12px;display:flex;align-items:center;gap:11px}
 .marca .logo{height:42px;width:42px;flex:none}
@@ -231,7 +231,7 @@ async function carregar(){
     tenta(pegaTudo("v_cco_rh_turnover_local_mes?select=*")),
     tenta(pegaTudo("v_cco_rh_abs_local_mes?select=*")),
     tenta(pega("v_cco_rh_tot?select=*")),
-    tenta(pegaTudo("v_cco_enxoval_bu?select=*")),
+    tenta(pegaTudo("mv_cco_enxoval_bu?select=*")),
     pega("mv_cco_dre_gerente?select=*"),
     pega("mv_cco_custo_operacao?select=*"),
     pegaTudo("mv_cco_custo_maquina?select=*"),
@@ -511,6 +511,9 @@ function abaDiretoria(){
     ${big("Corretivas urgentes", `${urg}`, corrTot+" corretivas abertas na BU", urg>50?"bad":urg>20?"warn":"ok")}
     ${big("Preventivas atrasadas", `${prevAtr}`, "de "+D.prevk.reduce((s,o)=>s+ +o.preventivas_abertas,0)+" abertas", prevAtr>80?"bad":prevAtr>30?"warn":"ok")}
     ${big("Máquinas", D.equip.length, "ativos na BU (cadastro oficial RxO)", "")}
+    ${big("Máquinas em seminovos", D.enx.length,
+        D.enx.length? D.enx.filter(e=>/negocia/i.test(e.situacao||"")).length+" em negociação de venda" : "aguardando 1ª coleta",
+        D.enx.length>30?"bad":D.enx.length>15?"warn":"")}
   </div>`;
 
   // pessoas & faturamento — visão BU
@@ -708,21 +711,28 @@ function metricasGerente(G){
 /* ---------- Resumo executivo ---------- */
 function gerResumo(G){
   const M = metricasGerente(G);
-  let h = `<div class="grid-big">
+  let h = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
     ${big("Receita "+nomeMes(M.m), fmtMi(M.mes.real), (M.p??"—")+"% do orçado ("+fmtMi(M.mes.orc)+")", M.p>=98?"ok":M.p>=90?"warn":"bad")}
     ${big("Resultado "+nomeMes(M.m), fmtMi(M.res.resultado_real), (M.pRes??"—")+"% do orçado ("+fmtMi(M.res.resultado_orc)+")", M.pRes>=98?"ok":M.pRes>=85?"warn":"bad")}
-    ${big("Custo Manutenção "+nomeMes(M.mC)+M.parcialC, fmtMil(M.custoM),
-        M.orcM?("orçado "+fmtMil(M.orcM)+" · "+(M.pCusto??"—")+"% atingido"):"sem orçado mapeado",
-        M.pCusto==null?"":M.pCusto<=85?"ok":M.pCusto<=100?"warn":"bad")}
-    ${big("Corretivas urgentes", M.osk.corretivas_urgentes??0, (M.osk.corretivas_abertas??0)+" abertas · pior: "+(M.osk.max_dias_aberto??"—")+" dias", (M.osk.corretivas_urgentes||0)>10?"bad":(M.osk.corretivas_urgentes||0)>4?"warn":"ok")}
-    ${big("Preventivas atrasadas", M.pvk.preventivas_atrasadas??0, (M.pvk.preventivas_abertas??0)+" abertas", (M.pvk.preventivas_atrasadas||0)>20?"bad":(M.pvk.preventivas_atrasadas||0)>8?"warn":"ok")}
-    ${big("EPI em dia", (M.epiOk??"—")+"%", M.atr+" de "+M.at+" funcionários com atraso", M.epiOk>=80?"ok":M.epiOk>=60?"warn":"bad")}
-    ${big("Máquinas", (D.equipG[G]||[]).length, "ativos no cadastro oficial", "")}
     ${(()=>{ const fg = D.fat.filter(f=>f.gerente===G);
       const pd = fg.reduce((s,f)=>s+(+f.pendente||0),0);
       return big("Pendente de faturamento", fg.length? fmtAuto(pd) : "—",
         fg.length? fg.filter(f=>+f.pendente>0).length+" projetos com valor em aberto" : "sem contratos vinculados",
         fg.length? (pd>5e6?"bad":pd>0?"warn":"ok") : ""); })()}
+  </div>
+  <div class="grid-big" style="margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+    ${big("Corretivas urgentes", M.osk.corretivas_urgentes??0, (M.osk.corretivas_abertas??0)+" abertas · pior: "+(M.osk.max_dias_aberto??"—")+" dias", (M.osk.corretivas_urgentes||0)>10?"bad":(M.osk.corretivas_urgentes||0)>4?"warn":"ok")}
+    ${big("Preventivas atrasadas", M.pvk.preventivas_atrasadas??0, (M.pvk.preventivas_abertas??0)+" abertas", (M.pvk.preventivas_atrasadas||0)>20?"bad":(M.pvk.preventivas_atrasadas||0)>8?"warn":"ok")}
+    ${big("Custo Manutenção "+nomeMes(M.mC)+M.parcialC, fmtMil(M.custoM),
+        M.orcM?("orçado "+fmtMil(M.orcM)+" · "+(M.pCusto??"—")+"% atingido"):"sem orçado mapeado",
+        M.pCusto==null?"":M.pCusto<=85?"ok":M.pCusto<=100?"warn":"bad")}
+  </div>
+  <div class="grid-big" style="margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));max-width:640px">
+    ${big("Máquinas", (D.equipG[G]||[]).length, "ativos no cadastro oficial", "")}
+    ${(()=>{ const eg = D.enx.filter(e=>e.gerente===G);
+      return big("Máquinas em seminovos", eg.length,
+        eg.length? eg.filter(e=>/negocia/i.test(e.situacao||"")).length+" em negociação de venda" : "frota 100% na operação",
+        eg.length>15?"bad":eg.length>5?"warn":eg.length?"":"ok"); })()}
   </div>`;
 
   // highlights automáticos
@@ -1553,7 +1563,7 @@ function render(aba){
 (async function(){
   const menu = document.getElementById("menu");
   menu.innerHTML = `<div class="marca">
-    <div class="logo"><img src="data:image/png;base64,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" alt="Armac"></div>
+    <div class="logo"><img src="data:image/png;base64,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" alt="Armac"></div>
     <div class="nome">CCO<span class="sub">Portos</span></div></div>
     <div class="rotulo-menu">Visão geral</div>
     <button data-aba="Diretoria">Diretoria</button>
