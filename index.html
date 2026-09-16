@@ -1462,6 +1462,12 @@ function dreNosGerente(G, mes){
 }
 
 function dreSecao(){
+  try { return dreSecaoInterna(); }
+  catch(e){ return '<section style="margin-top:16px"><h2>DRE — Real × Orçado</h2>'+
+    '<div class="aviso">⚠ Erro ao montar o DRE navegável: '+esc(e.message)+' — me avise com um print deste texto.</div></section>'; }
+}
+
+function dreSecaoInterna(){
   // seção da Diretoria: filtro BU Portos / gerentes + mês
   const fontes = ["BU", ...GERENTES];
   const mesesDe = e => e==="BU" ? [...new Set(D.resOf.map(r=>r.anomes))].sort()
@@ -1660,7 +1666,8 @@ function render(aba){
   const c = document.getElementById("conteudo");
   if(aba==="Diretoria"){
     sub.style.display="none";
-    c.innerHTML = avisoColetores() + abaDiretoria();
+    try { c.innerHTML = avisoColetores() + abaDiretoria(); }
+    catch(e){ c.innerHTML = '<div class="aviso">⚠ Erro ao montar a Diretoria: '+esc(e.message)+' ('+esc((e.stack||"").split("\n")[1]||"")+') — me mande um print.</div>'; }
   } else if(aba==="Links"){
     sub.style.display="none";
     c.innerHTML = abaLinks();
@@ -1719,4 +1726,5 @@ function render(aba){
 })();
 </script>
 </body>
+<!-- build 20260916-202148 -->
 </html>
