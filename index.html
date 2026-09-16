@@ -278,7 +278,7 @@ async function carregar(){
 }
 
 function avisoColetores(){
-  const ruins = D.saude.filter(s=>s.status==="vermelho");
+  const ruins = D.saude.filter(s=>!ROBOS_OCULTOS.includes(s.coletor) && statusRobo(s)==="vermelho");
   if(!ruins.length) return "";
   return `<div class="aviso">⚠ Atenção: dado possivelmente desatualizado — ${ruins.length} fonte(s) sem coleta recente (${ruins.map(r=>esc(r.coletor)).join(", ")}).</div>`;
 }
@@ -1719,6 +1719,16 @@ function initMapaFrota(G){
 
 /* ================= navegação ================= */
 
+const ROBOS_OCULTOS = ["rxo_oficial","custos_anual","faturamento_mes"];
+const CADENCIA_DIAS = {rxo_resultado:8, rxo_equipamentos:8, razao_completo:8, base_orcamento:8};
+
+function statusRobo(s){
+  if(s.sucesso === false) return "vermelho";
+  const lim = CADENCIA_DIAS[s.coletor] || 1.2;
+  const horas = (Date.now() - new Date(String(s.executado_em).replace(" ","T")).getTime()) / 36e5;
+  return horas <= lim*24 ? "verde" : horas <= lim*48 ? "amarelo" : "vermelho";
+}
+
 function sinaleiraRobos(){
   if(!D.saude || !D.saude.length) return "";
   const NOMES = {
@@ -1729,7 +1739,7 @@ function sinaleiraRobos(){
     rxo_resultado:      ["Power BI · DRE oficial (RxO)", "sexta 07:40"],
     rxo_equipamentos:   ["Power BI · Cadastro de máquinas", "sexta 07:40"],
     razao_completo:     ["Power BI · Razão completo",    "sexta 07:40"],
-    base_orcamento:     ["Power BI · Base orçamento",    "sexta 07:40"],
+    base_orcamento:     ["Power BI · Base orçamento (anual)", "sexta 07:40"],
     horimetro_total:    ["Total · Horímetros",           "07:30"],
     telemetria_posicoes:["Total · Posições GPS",         "07:30"],
     enxoval:            ["Enxoval · Seminovos",          "08:05"],
@@ -1738,18 +1748,17 @@ function sinaleiraRobos(){
     rh_desligados_mes:  ["RH · Turnover (mês)",          "07:50"],
     rh_absenteismo:     ["RH · Absenteísmo (ano)",       "07:50"],
     rh_absenteismo_mes: ["RH · Absenteísmo (mês)",       "07:50"],
-    rxo_oficial:        ["Injeção manual · RxO oficial", "ritual mensal"],
-    custos_anual:       ["Injeção manual · Custos anual","ritual mensal"],
-    faturamento_mes:    ["Injeção manual · Faturamento mês", "sob demanda"],
   };
   const peso = {vermelho:0, amarelo:1, verde:2};
   const farol = {verde:"var(--verde)", amarelo:"#D97706", vermelho:"var(--verm)"};
   const rotulo = {verde:"em dia", amarelo:"atenção", vermelho:"parado"};
-  const linhas = [...D.saude].sort((a,b)=>(peso[a.status]??3)-(peso[b.status]??3) ||
+  const robos = D.saude.filter(s=>!ROBOS_OCULTOS.includes(s.coletor))
+    .map(s=>({...s, status: statusRobo(s)}));
+  const linhas = robos.sort((a,b)=>(peso[a.status]??3)-(peso[b.status]??3) ||
     (NOMES[a.coletor]?.[0]||a.coletor).localeCompare(NOMES[b.coletor]?.[0]||b.coletor));
-  const nv = D.saude.filter(s=>s.status==="verde").length;
-  const na = D.saude.filter(s=>s.status==="amarelo").length;
-  const nr = D.saude.filter(s=>s.status==="vermelho").length;
+  const nv = robos.filter(s=>s.status==="verde").length;
+  const na = robos.filter(s=>s.status==="amarelo").length;
+  const nr = robos.filter(s=>s.status==="vermelho").length;
   const quando = t => {
     if(!t) return "—";
     const d = new Date(String(t).replace(" ","T"));
@@ -1762,7 +1771,7 @@ function sinaleiraRobos(){
       <span style="font-size:12px;font-weight:700"><span style="color:var(--verde)">● ${nv} em dia</span>
       ${na? ` · <span style="color:#D97706">● ${na} atenção</span>`:""}
       ${nr? ` · <span style="color:var(--verm)">● ${nr} parado</span>`:""}</span></h2>
-    <div class="nota">Verde = coletou nas últimas 24h · âmbar = 1–3 dias (normal nas fontes de ritual manual) · vermelho = 3+ dias sem coleta.</div>
+    <div class="nota">Farol respeita o plantão de cada robô: diários cobram 24h; os semanais (razão, orçamento, RxO) só acendem atenção após 8 dias.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;margin-top:10px">` +
     linhas.map(s=>{
       const [nome, hora] = NOMES[s.coletor] || [s.coletor, "—"];
@@ -1877,5 +1886,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260916-230607 -->
+<!-- build 20260916-231327 -->
 </html>
