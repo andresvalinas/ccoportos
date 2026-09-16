@@ -1633,10 +1633,8 @@ function gerFrota(G){
   const rotCat = {maquina:"Máquinas", caminhao:"Caminhões", empilhadeira:"Empilhadeiras", plataforma:"Plataformas", veiculo:"Veículos", outros:"Outros"};
   const chips = Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,n])=>
     `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--white);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--title)">${n} <span style="font-weight:600;color:var(--muted)">${rotCat[c]||cap(c)}</span></span>`).join(" ");
-  let h = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+  let h = `<div class="grid-big">
     ${big("Máquinas no mapa", fr.length, cadastro.length? `de ${cadastro.length} ativos no cadastro (${pctGps}%)` : "com última posição conhecida", fr.length? "ok":"bad")}
-    ${big("Ligadas agora", lig, "motor ligado no último sinal", lig? "ok":"")}
-    ${big("Desligadas", des, "motor desligado no último sinal", "")}
     ${big("Sem rastreamento", semGps.length, "ativos do cadastro sem posição conhecida", semGps.length>cadastro.length*0.4?"bad":semGps.length?"warn":"ok")}
   </div>
   ${chips? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 14px">${chips}</div>`:""}`;
@@ -1820,5 +1818,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260916-225753 -->
+<!-- build 20260916-230152 -->
 </html>
