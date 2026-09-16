@@ -838,134 +838,86 @@ function gerResumo(G){
 
 /* ---------- DRE ---------- */
 function gerDRE(G){
-  const mesesOp = [...new Set(D.dre.filter(r=>r.gerente===G).map(r=>r.anomes))].sort();
-  if(!mesSel || !mesesOp.includes(mesSel)) mesSel = mesesOp.includes(D.mesFechado) ? D.mesFechado : mesesOp[mesesOp.length-1];
-  const agoraYM = String(new Date().getFullYear()*100 + (new Date().getMonth()+1));
-  const brutas = D.dre.filter(r=>r.gerente===G && r.anomes===mesSel);
-  const porDre = {};
-  brutas.forEach(r=>{
-    if(!porDre[r.dre]) porDre[r.dre] = {dre:r.dre, realizado:0, orcado:0, subs:{}};
-    porDre[r.dre].realizado += +r.realizado; porDre[r.dre].orcado += +r.orcado;
-    if(r.sub){ if(!porDre[r.dre].subs[r.sub]) porDre[r.dre].subs[r.sub]={realizado:0,orcado:0};
-      porDre[r.dre].subs[r.sub].realizado += +r.realizado; porDre[r.dre].subs[r.sub].orcado += +r.orcado; }
-  });
-  const linhas = Object.values(porDre).sort((a,b)=>a.dre.localeCompare(b.dre));
-  const l15 = linhas.filter(r=>/^[1-5]\./.test(r.dre));
-  const totR = l15.reduce((s,r)=>s+ +r.realizado,0), totO = l15.reduce((s,r)=>s+ +r.orcado,0);
-
-  let h = `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">DRE — ${cap(G)}
-      <select class="mes" onchange="mesSel=this.value;render(abaAtual)">
-        ${mesesOp.map(am=>`<option value="${am}" ${am===mesSel?"selected":""}>${nomeMes(am)}${am===agoraYM?" (parcial)":""}</option>`).join("")}
-      </select>${btnExcel('tb-dre','dre_'+G.toLowerCase()+'_'+mesSel)}</h2>
-    <div class="nota">Realizado (razão) × orçado (base), nos centros de lucro do gerente. Total = linhas 1 a 5, régua oficial.</div>
-    <table id="tb-dre"><tr><th>Linha DRE</th><th class="dir">Realizado</th><th class="dir">Orçado</th><th class="dir">Δ O×R</th><th class="dir">%</th></tr>`;
-  const linhaDre = (rotulo, r, o, sub) => {
-    const p = pct(r, o);
-    const delta = r - o;
-    return `<tr${sub?' style="background:#FAFBFE"':''}>
-      <td${sub?' style="padding-left:34px"':''}>${sub?`<span class="cel-sub" style="font-size:12px">└ ${esc(rotulo)}</span>`:esc(rotulo)}</td>
-      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${fmtMil(r)}</td>
-      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${o? fmtMil(o):"—"}</td>
-      <td class="dir num" style="color:${delta>=0?"var(--verde)":"var(--verm)"};font-weight:${sub?500:700}">${delta>=0?"▲":"▼"} ${fmtMil(Math.abs(delta))}</td>
-      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${p!=null? p+"%":"—"}</td></tr>`;
-  };
-  h += linhas.map((r,ri)=>{
-    const subs = Object.entries(r.subs).filter(([s,v])=>Math.abs(+v.realizado)>0.5||Math.abs(+v.orcado)>0.5)
-      .sort((a,b)=>Math.abs(+b[1].realizado)-Math.abs(+a[1].realizado));
-    const tem = subs.length>1 || (subs.length===1 && subs[0][0]!=="Outros");
-    const id = "gd_"+ri;
-    let bloco = linhaDre(r.dre, +r.realizado, +r.orcado, false)
-      .replace("<td>", '<td style="white-space:nowrap">'+(tem?
-        '<button class="dre-mais" onclick="dreAbre(this,\''+id+'\')" style="width:20px;height:20px;border:1px solid var(--border);border-radius:5px;background:var(--white);color:var(--royal);font-weight:800;cursor:pointer;margin-right:8px;line-height:1">+</button>'
-        : '<span style="display:inline-block;width:28px"></span>'));
-    if(tem) subs.forEach(([nome,v],si)=>{
-      bloco += linhaDre(nome, +v.realizado, +v.orcado, true)
-        .replace("<tr", '<tr data-id="'+id+'_'+si+'" data-pai="'+id+'"')
-        .replace(' style="background:#FAFBFE"', ' style="background:#FAFBFE;display:none"');
-    });
-    return bloco;
-  }).join("");
-  const pT = pct(totR, totO);
-  h += `<tr class="total"><td>Total (1–5)</td><td class="dir num">${fmtMil(totR)}</td><td class="dir num">${fmtMil(totO)}</td>
-    <td class="dir num" style="color:${totR>=totO?"var(--verde)":"var(--verm)"}">${totR>=totO?"▲":"▼"} ${fmtMil(Math.abs(totR-totO))}</td>
-    <td class="dir num">${pT!=null?pT+"%":"—"}</td></tr>`;
-  h += `</table></section>`;
-
-  // RxO por operação
-  const opsG = {};
-  D.rxoOp.filter(r=>r.gerente===G && r.anomes===mesSel).forEach(r=>{
-    const sp = splitOpEPI(r.nome_cl), k = sp.op+" "+sp.cid;
-    if(!opsG[k]) opsG[k] = {rot:k, real:0, orc:0};
-    opsG[k].real += +r.realizado; opsG[k].orc += +r.orcado; });
-  const ops = Object.values(opsG).filter(o=>Math.abs(o.orc)>1000||Math.abs(o.real)>1000)
-    .sort((a,b)=>Math.abs(b.orc)-Math.abs(a.orc)).slice(0,12);
-  h += `<section><h2>Receita x Orçado por operação — ${nomeMes(mesSel)}</h2>
-    <div class="nota">Barra colorida = realizado (cor pelo atingimento) · barra clara = orçado. Passe o mouse para detalhes.</div>` +
-    svgVBarDuplo(ops.map(o=>({rot:o.rot, real:o.real, orc:o.orc})), fmtAuto, true) +
-    `</section>`;
-
-  // ---- custos (COGS) por operação, seguindo o mês selecionado ----
-  const cOpsG = {};
-  D.custoOp.filter(r=>r.gerente===G && r.anomes===mesSel).forEach(r=>{
-    const sp = splitOpEPI(r.nome_cl), k = sp.op+"|"+sp.cid;
-    if(!cOpsG[k]) cOpsG[k] = {op:sp.op, cid:sp.cid, custo_real:0, custo_orc:0};
-    cOpsG[k].custo_real += +r.custo_real; cOpsG[k].custo_orc += +r.custo_orc; });
-  const cOps = Object.values(cOpsG).filter(r=>r.custo_real>1000 || r.custo_orc>1000);
-  const somaCR = cOps.reduce((s,r)=>s+ +r.custo_real,0), somaCO = cOps.reduce((s,r)=>s+ +r.custo_orc,0);
-  h += `<section><h2>Custos de manutenção por operação — ${nomeMes(mesSel)}</h2>
-    <div class="nota">Realizado (razão) × orçado de manutenção, só operações vivas no RxO.</div>
-    ${toolbar('tb-custop','🔎 Buscar operação…', null, cOps.length+' operações', 'custos_operacao_'+G.toLowerCase()+'_'+mesSel)}
-    <div class="rolagem" style="max-height:380px"><table id="tb-custop">
-    <tr>${["Operação","Cidade","Custo","Orçado","%"].map((t,i)=>
-      `<th class="${i>=2?"dir":""}" onclick="ordenaTabela('tb-custop',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
-    cOps.sort((a,b)=>b.custo_real-a.custo_real).map(r=>{
-      const p = pct(r.custo_real, r.custo_orc);
-      return `<tr data-busca="${esc((r.op+" "+r.cid).toLowerCase())}">
-      <td>${esc(r.op)}</td><td>${esc(r.cid)}</td>
-      <td class="dir num destaque">${fmtAuto(r.custo_real)}</td>
-      <td class="dir num">${r.custo_orc>0? fmtAuto(r.custo_orc):"—"}</td>
-      <td class="dir num">${p!=null?`<span class="tag ${p<=100?"verde":p<=115?"ambar":"verm"}">${p}%</span>`:"—"}</td></tr>`}).join("") +
-    `<tr class="total"><td>Total</td><td></td><td class="dir num">${fmtAuto(somaCR)}</td>
-     <td class="dir num">${fmtAuto(somaCO)}</td><td class="dir num">${pct(somaCR,somaCO)??"—"}%</td></tr>` +
-    `</table></div></section>`;
-
-  // ---- máquinas que mais gastam (manutenção), com busca ----
-  const mesesMaq = [...new Set(D.custoMaq.filter(r=>r.gerente===G).map(r=>r.anomes))].sort();
-  if(!mesMaq || !mesesMaq.includes(mesMaq)) mesMaq = mesesMaq.includes(mesSel) ? mesSel : mesesMaq[mesesMaq.length-1];
-  const maqs = {};
-  D.custoMaq.filter(r=>r.gerente===G && r.anomes===mesMaq).forEach(r=>{
-    if(!maqs[r.maquina]) maqs[r.maquina] = {maquina:r.maquina, custo:0, lanc:0};
-    maqs[r.maquina].custo += +r.custo; maqs[r.maquina].lanc += +r.lancamentos; });
-  const listaMaq = Object.values(maqs).sort((a,b)=>b.custo-a.custo);
-  const opsMaq = opsDe(listaMaq.filter(r=>D.equipIdx[r.maquina]?.nome_cl),
-    r=>{const sp=splitOpEPI(D.equipIdx[r.maquina].nome_cl); return sp.op+" / "+sp.cid;});
-  const agoraYM2 = String(new Date().getFullYear()*100 + (new Date().getMonth()+1));
-  h += `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Máquinas que mais gastam
-      <select class="mes" onchange="mesMaq=this.value;render(abaAtual)">
-        ${mesesMaq.map(am=>`<option value="${am}" ${am===mesMaq?"selected":""}>${nomeMes(am)}${am===agoraYM2?" (parcial)":""}</option>`).join("")}
-      </select></h2>
-    <div class="nota">Custos de manutenção lançados por máquina. ${listaMaq.length? "Filtre por texto ou operação; clique nos títulos para ordenar." : "Sem lançamentos por máquina neste mês."}</div>`;
-  if(listaMaq.length){
-    h += toolbar('tb-maq','🔎 Buscar máquina…', opsMaq, listaMaq.length+' máquinas · ordenado por custo', 'maquinas_'+G.toLowerCase()+'_'+mesMaq) +
-    `<div class="rolagem"><table id="tb-maq">
-    <tr>${["Máquina","Operação","Lanç.","Custo"].map((t,i)=>
-      `<th class="${i>=2?"dir":""}" onclick="ordenaTabela('tb-maq',${i})" title="Clique para ordenar">${t}</th>`).join("")}</tr>` +
-    listaMaq.map(r=>{
-      const eq = D.equipIdx[r.maquina]||{};
-      const spo = eq.nome_cl ? splitOpEPI(eq.nome_cl) : null;
-      const busca = [r.maquina, eq.descricao, eq.nome_cl].join(" ").toLowerCase();
-      return `<tr data-busca="${esc(busca)}" data-op="${spo?esc(spo.op+" / "+spo.cid):""}">
-      <td class="num"><div class="cel-main">${esc(r.maquina)}</div><div class="cel-sub">${esc(eq.descricao||"—")}</div></td>
-      <td>${spo?esc(spo.op+" - "+spo.cid):"—"}</td>
-      <td class="dir num">${r.lanc}</td>
-      <td class="dir num destaque">${fmtAuto(r.custo)}</td></tr>`}).join("") +
-    `</table></div>`;
-  }
-  h += `</section>`;
-  return h;
+  try { return gerDreInterna(G); }
+  catch(e){ return '<section><h2>DRE</h2><div class="aviso">⚠ Erro ao montar o DRE: '+esc(e.message)+' — me avise com um print.</div></section>'; }
 }
 
-/* ---------- Corretivas & Preventivas ---------- */
+let gdMes = null, gdOp = "Todas";
+const gdCache = {};
+
+function gerDreInterna(G){
+  const meses = [...new Set(D.dre.filter(r=>r.gerente===G).map(r=>r.anomes))].sort();
+  if(!meses.length) return '<section><h2>DRE</h2><div class="nota">Sem dados de razão para este gerente ainda.</div></section>';
+  if(!gdMes || !meses.includes(gdMes)) gdMes = meses[meses.length-1];
+  const chave = G + "|" + gdMes;
+
+  if(gdCache[chave] === undefined){
+    gdCache[chave] = null;
+    (async()=>{
+      try { gdCache[chave] = await pegaTudo("mv_cco_dre_det?select=*&gerente=eq."+encodeURIComponent(G)+"&anomes=eq."+gdMes); }
+      catch(e){ gdCache[chave] = []; }
+      if(abaAtual!=="Diretoria" && subAba==="DRE") render(abaAtual);
+    })();
+  }
+  const selM = '<select class="mes" onchange="gdMes=this.value;gdOp=\'Todas\';render(abaAtual)">'+
+    meses.map(m=>'<option value="'+m+'" '+(m===gdMes?"selected":"")+'>'+nomeMes(m)+'</option>').join("")+'</select>';
+
+  const rows = gdCache[chave];
+  if(!rows){
+    return '<section><h2 style="display:flex;align-items:center;gap:10px">DRE — Real × Orçado '+selM+'</h2>'+
+      '<div class="nota">Carregando o DRE detalhado…</div></section>';
+  }
+
+  const ops = [...new Set(rows.map(r=>r.operacao))].sort();
+  if(gdOp!=="Todas" && !ops.includes(gdOp)) gdOp = "Todas";
+  const selO = '<select class="mes" onchange="gdOp=this.value;render(abaAtual)">'+
+    ['Todas', ...ops].map(o=>'<option value="'+esc(o)+'" '+(o===gdOp?"selected":"")+'>'+
+      (o==="Todas"?"Todas as operações":esc(o))+'</option>').join("")+'</select>';
+
+  const filtradas = gdOp==="Todas" ? rows : rows.filter(r=>r.operacao===gdOp);
+
+  // árvore: dre -> aux1 -> aux2 -> conta (real na folha; orçado até o nível 3)
+  const vals = {};
+  const soma = (ch, campo, v) => { if(!vals[ch]) vals[ch]={real:0, orc:0, tem:{real:false,orc:false}};
+    vals[ch][campo] += v; vals[ch].tem[campo] = true; };
+  for(const r of filtradas){
+    const c1 = r.dre, c2 = c1+" > "+r.aux1, c3 = c2+" > "+r.aux2;
+    if(r.conta != null){
+      const v = +r.real || 0, c4 = c3+" > "+r.conta;
+      soma(c1,"real",v); soma(c2,"real",v); soma(c3,"real",v); soma(c4,"real",v);
+    } else {
+      const v = +r.orc || 0;
+      soma(c1,"orc",v); soma(c2,"orc",v); soma(c3,"orc",v);
+    }
+  }
+  const caminhos = Object.keys(vals).filter(c=>Math.abs(vals[c].real)>0.5||Math.abs(vals[c].orc)>0.5).sort();
+  const idx = {}; caminhos.forEach((c,i)=>idx[c]=i);
+  const temFilho = {};
+  caminhos.forEach(c=>{ const p = c.includes(" > ")? c.slice(0,c.lastIndexOf(" > ")) : null;
+    if(p!=null && idx[p]!=null) temFilho[p]=true; });
+  const nos = caminhos.map((c,i)=>{
+    const partes = c.split(" > ");
+    const p = partes.length>1? partes.slice(0,-1).join(" > ") : null;
+    const n = vals[c];
+    return {id:i, pai:(p!=null && idx[p]!=null)? idx[p] : null, nivel:partes.length,
+            nome:partes[partes.length-1], raiz:partes[0],
+            real:n.tem.real? n.real : null, orc:n.tem.orc? n.orc : null, temFilho:!!temFilho[c]};
+  });
+  let totR = 0, totO = 0;
+  nos.filter(n=>n.nivel===1 && /^[1-5]\./.test(n.nome)).forEach(n=>{ totR += n.real||0; totO += n.orc||0; });
+  const dT = totR - totO;
+
+  return '<section><h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">DRE — Real × Orçado '+selM+selO+
+    '<span style="font-size:11px;font-weight:600;color:var(--muted)">use o + para detalhar até a conta</span></h2>'+
+    '<div class="rolagem"><table><tr><th>Linha</th><th class="dir">Real</th><th class="dir">Orçado</th><th class="dir">Δ R−O</th></tr>'+
+    dreArvoreHTML(nos, "gd_")+
+    '<tr class="total"><td style="padding-left:36px">Total (1–5)</td>'+
+    '<td class="dir num">'+fmtMil(totR)+'</td><td class="dir num">'+fmtMil(totO)+'</td>'+
+    '<td class="dir num" style="color:'+(dT>=0?"var(--verde)":"var(--verm)")+'">'+(dT>=0?"\u25b2 ":"\u25bc ")+fmtMil(Math.abs(dT))+'</td></tr>'+
+    '</table></div>'+
+    '<div class="nota" style="margin-top:8px">Realizado do razão até a conta contábil; orçado disponível até o 3º nível. Fonte: razão completo + base orçamento.</div></section>';
+}
+
 function gerOsPrev(G){
   const corrAll = D.corr.filter(o=>o.g===G);
   const prevAll = D.prev.filter(o=>o.g===G);
@@ -1688,5 +1640,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260916-202148 -->
+<!-- build 20260916-204224 -->
 </html>
