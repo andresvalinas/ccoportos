@@ -176,6 +176,8 @@ const nomeMes = am => ["","jan","fev","mar","abr","mai","jun","jul","ago","set",
 let D = {};
 let abaAtual = "Diretoria";
 let subAba = "Resumo";
+let dreMes = null;
+let dreEsc = "BU";
 let mesSel = null;
 let mesMaq = null;
 const opSel = {};  // filtro de operação por quadro
@@ -210,32 +212,32 @@ async function carregar(){
     pega("mv_cco_rxo_gerente?select=*"),
     pega("mv_cco_custos_gerente_mes?select=*"),
     pega("v_cco_epi_gerente?select=*"),
-    pega("v_cco_os_kpis_gerente?select=*"),
-    pega("v_cco_prev_kpis_gerente?select=*"),
-    pegaTudo("v_cco_os_corretivas?select=num_ordem,prioridade,dias_aberto,equipamento,operacao,descricao,gerente&order=dias_aberto.desc.nullslast"),
-    pegaTudo("v_cco_os_preventivas?select=num_ordem,equipamento,aderencia,operacao,gerente,hor_acumulado,hor_revisao&order=aderencia.asc.nullslast"),
+    pega("mv_cco_os_kpis_gerente?select=*"),
+    pega("mv_cco_prev_kpis_gerente?select=*"),
+    pegaTudo("mv_cco_os_corretivas?select=num_ordem,prioridade,dias_aberto,equipamento,operacao,descricao,gerente&order=dias_aberto.desc.nullslast"),
+    pegaTudo("mv_cco_os_preventivas?select=num_ordem,equipamento,aderencia,operacao,gerente,hor_acumulado,hor_revisao&order=aderencia.asc.nullslast"),
     pega("v_cco_saude_coletores?select=*"),
     pega("mv_cco_rxo_operacao?select=*"),
     pega("mv_cco_resultado_gerente?select=*"),
     pega("mv_cco_orcado_manut?select=*"),
     pegaTudo("v_cco_epi_itens?select=*"),
-    pega("v_cco_resultado_oficial?select=anomes,dre,metrica,valor"),
+    pega("mv_cco_resultado_oficial?select=anomes,dre,metrica,valor"),
     pegaTudo("v_cco_epi_colaboradores?select=*"),
     pegaTudo("mv_cco_resultado_operacao?select=*"),
     pegaTudo("mv_cco_horimetro_atual?select=*"),
-    tenta(pegaTudo("v_cco_fat?select=*")),
-    tenta(pegaTudo("v_cco_fat_mes?select=*")),
-    tenta(pega("v_cco_rh_kpis?select=*")),
-    tenta(pegaTudo("v_cco_rh_turnover_local?select=*")),
-    tenta(pegaTudo("v_cco_rh_abs_local?select=*")),
-    tenta(pegaTudo("v_cco_rh_turnover_local_mes?select=*")),
-    tenta(pegaTudo("v_cco_rh_abs_local_mes?select=*")),
-    tenta(pega("v_cco_rh_tot?select=*")),
+    tenta(pegaTudo("mv_cco_fat?select=*")),
+    tenta(pegaTudo("mv_cco_fat_mes?select=*")),
+    tenta(pega("mv_cco_rh_kpis?select=*")),
+    tenta(pegaTudo("mv_cco_rh_turnover_local?select=*")),
+    tenta(pegaTudo("mv_cco_rh_abs_local?select=*")),
+    tenta(pegaTudo("mv_cco_rh_turnover_local_mes?select=*")),
+    tenta(pegaTudo("mv_cco_rh_abs_local_mes?select=*")),
+    tenta(pega("mv_cco_rh_tot?select=*")),
     tenta(pegaTudo("mv_cco_enxoval_bu?select=*")),
     pega("mv_cco_dre_gerente?select=*"),
     pega("mv_cco_custo_operacao?select=*"),
     pegaTudo("mv_cco_custo_maquina?select=*"),
-    pegaTudo("v_cco_equipamentos?select=ativo,descricao,marca,modelo,nome_cl,gerente"),
+    pegaTudo("mv_cco_equipamentos?select=ativo,descricao,marca,modelo,nome_cl,gerente"),
     pegaTudo("mv_cco_frota_mapa?select=ativo,description,model,nome_cl,latitude,longitude,location_datetime,location_source,hourmeter,snapshot_date,gerente&gerente=not.is.null"),
   ]);
   const canon = g => { const u=(g||"").toUpperCase();
@@ -497,7 +499,7 @@ function abaDiretoria(){
   let h = `<h2 style="font-size:15px;font-weight:800;color:var(--title);margin:4px 0 12px">Visão Geral</h2>
   <div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
     ${big("Receita "+nomeMes(m), fmtMi(mes.real), pMes+"% do orçado ("+fmtMi(mes.orc)+")", pMes>=98?"ok":pMes>=90?"warn":"bad")}
-    ${(()=>{const rOf=D.resOf.filter(r=>r.anomes===m&&/^total$/i.test(r.dre));
+    ${(()=>{const rOf=D.resOf.filter(r=>r.anomes===m&&r.caminho==="Total");
       if(!rOf.length) return "";
       const re=rOf.find(r=>r.metrica==="Real"), oc=rOf.find(r=>r.metrica!=="Real");
       const pr=pct(re?.valor, oc?.valor);
@@ -515,6 +517,8 @@ function abaDiretoria(){
         D.enx.length? D.enx.filter(e=>/negocia/i.test(e.situacao||"")).length+" em negociação de venda" : "aguardando 1ª coleta",
         D.enx.length>30?"bad":D.enx.length>15?"warn":"")}
   </div>`;
+
+  h += dreSecao();
 
   // pessoas & faturamento — visão BU
   const k = D.rhK;
@@ -903,11 +907,20 @@ function gerDRE(G){
       <td class="dir num" style="color:${delta>=0?"var(--verde)":"var(--verm)"};font-weight:${sub?500:700}">${delta>=0?"▲":"▼"} ${fmtMil(Math.abs(delta))}</td>
       <td class="dir num"${sub?' style="color:var(--muted)"':''}>${p!=null? p+"%":"—"}</td></tr>`;
   };
-  h += linhas.map(r=>{
-    let bloco = linhaDre(r.dre, +r.realizado, +r.orcado, false);
-    const ordemSub = ["Folha","Custos de Manutenção","Outros Custos"];
-    Object.entries(r.subs).sort((a,b)=>ordemSub.indexOf(a[0])-ordemSub.indexOf(b[0]))
-      .forEach(([nome,v])=> bloco += linhaDre(nome, +v.realizado, +v.orcado, true));
+  h += linhas.map((r,ri)=>{
+    const subs = Object.entries(r.subs).filter(([s,v])=>Math.abs(+v.realizado)>0.5||Math.abs(+v.orcado)>0.5)
+      .sort((a,b)=>Math.abs(+b[1].realizado)-Math.abs(+a[1].realizado));
+    const tem = subs.length>1 || (subs.length===1 && subs[0][0]!=="Outros");
+    const id = "gd_"+ri;
+    let bloco = linhaDre(r.dre, +r.realizado, +r.orcado, false)
+      .replace("<td>", '<td style="white-space:nowrap">'+(tem?
+        '<button class="dre-mais" onclick="dreAbre(this,\''+id+'\')" style="width:20px;height:20px;border:1px solid var(--border);border-radius:5px;background:var(--white);color:var(--royal);font-weight:800;cursor:pointer;margin-right:8px;line-height:1">+</button>'
+        : '<span style="display:inline-block;width:28px"></span>'));
+    if(tem) subs.forEach(([nome,v],si)=>{
+      bloco += linhaDre(nome, +v.realizado, +v.orcado, true)
+        .replace("<tr", '<tr data-id="'+id+'_'+si+'" data-pai="'+id+'"')
+        .replace(' style="background:#FAFBFE"', ' style="background:#FAFBFE;display:none"');
+    });
     return bloco;
   }).join("");
   const pT = pct(totR, totO);
@@ -1357,6 +1370,122 @@ function gerFaturamento(G){
       <td class="dir num destaque" data-v="${+f.total||0}">${fmtAuto(+f.total||0)}</td></tr>`}).join("") +
     `</table></div></section>`;
   return h;
+}
+
+
+
+/* ---------- Motor DRE navegável (+/-) ---------- */
+function dreAbre(btn, id){
+  const abrindo = btn.textContent === "+";
+  btn.textContent = abrindo ? "\u2212" : "+";
+  const filhos = [...document.querySelectorAll('tr[data-pai="'+id+'"]')];
+  if(abrindo){ filhos.forEach(t=>t.style.display=""); return; }
+  const fecha = pid => [...document.querySelectorAll('tr[data-pai="'+pid+'"]')].forEach(t=>{
+    t.style.display = "none";
+    const b = t.querySelector(".dre-mais"); if(b) b.textContent = "+";
+    fecha(t.dataset.id);
+  });
+  fecha(id);
+}
+
+function dreArvoreHTML(nos, pfx){
+  // nos: [{id, pai, nivel, nome, real, orc, temFilho}] em ordem de exibição
+  const linha = n => {
+    const d = (n.real!=null && n.orc!=null) ? n.real - n.orc : null;
+    const neg = /dedu|cogs|imposto|custo|despes|sg&a/i.test(n.raiz||n.nome);
+    const bom = d==null ? null : d>=0;
+    return '<tr data-id="'+pfx+n.id+'"'+(n.pai!=null?' data-pai="'+pfx+n.pai+'" style="display:none"':'')+'>'+
+      '<td style="padding-left:'+((n.nivel-1)*24+8)+'px;white-space:nowrap">'+
+      (n.temFilho? '<button class="dre-mais" onclick="dreAbre(this,\''+pfx+n.id+'\')" '+
+        'style="width:20px;height:20px;border:1px solid var(--border);border-radius:5px;background:var(--white);color:var(--royal);font-weight:800;cursor:pointer;margin-right:8px;line-height:1">+</button>'
+        : '<span style="display:inline-block;width:28px"></span>')+
+      '<span style="font-weight:'+(n.nivel===1?700:n.nivel===2?600:400)+'">'+esc(n.nome)+'</span></td>'+
+      '<td class="dir num">'+fmtMil(n.real||0)+'</td>'+
+      '<td class="dir num" style="color:var(--muted)">'+(n.orc!=null? fmtMil(n.orc):"—")+'</td>'+
+      '<td class="dir num" style="font-weight:600;color:'+(bom==null?"var(--muted)":bom?"var(--verde)":"var(--verm)")+'">'+
+        (d==null?"—":(d>=0?"\u25b2 ":"\u25bc ")+fmtMil(Math.abs(d)))+'</td></tr>';
+  };
+  return nos.map(linha).join("");
+}
+
+function dreNosOficial(mes){
+  // árvore da fonte oficial #6 RxO (BU): caminhos hierárquicos completos
+  const rows = D.resOf.filter(r=>r.anomes===mes);
+  const vals = {}; let tot = {real:null, orc:null};
+  for(const r of rows){
+    let ch;
+    if(r.dre==="Total"){
+      if(r.caminho==="Total"){ tot[r.metrica==="Real"?"real":"orc"] = +r.valor; continue; }
+      ch = r.caminho.slice(0, r.caminho.length-8); // remove " > Total"
+    } else ch = r.caminho;
+    if(!vals[ch]) vals[ch] = {real:null, orc:null};
+    vals[ch][r.metrica==="Real"?"real":"orc"] = +r.valor;
+  }
+  const caminhos = Object.keys(vals).sort();
+  const idx = {}; caminhos.forEach((c,i)=>idx[c]=i);
+  const temFilho = {};
+  caminhos.forEach(c=>{ const p = c.includes(" > ")? c.slice(0,c.lastIndexOf(" > ")) : null;
+    if(p!=null && idx[p]!=null) temFilho[p]=true; });
+  const nos = caminhos.map((c,i)=>{
+    const partes = c.split(" > ");
+    const p = partes.length>1? partes.slice(0,-1).join(" > ") : null;
+    return {id:i, pai:(p!=null && idx[p]!=null)? idx[p] : null, nivel:partes.length,
+            nome:partes[partes.length-1], raiz:partes[0],
+            real:vals[c].real, orc:vals[c].orc, temFilho:!!temFilho[c]};
+  });
+  return {nos, tot};
+}
+
+function dreNosGerente(G, mes){
+  // árvore do razão (por gerente): linha DRE -> subgrupos
+  const rows = D.dre.filter(r=>r.gerente===G && r.anomes===mes);
+  const porDre = {};
+  rows.forEach(r=>{
+    if(!porDre[r.dre]) porDre[r.dre] = {real:0, orc:0, subs:{}};
+    porDre[r.dre].real += +r.realizado; porDre[r.dre].orc += +r.orcado;
+    const s = r.sub || "Outros";
+    if(!porDre[r.dre].subs[s]) porDre[r.dre].subs[s] = {real:0, orc:0};
+    porDre[r.dre].subs[s].real += +r.realizado; porDre[r.dre].subs[s].orc += +r.orcado;
+  });
+  const nos = []; let tot = {real:0, orc:0};
+  Object.keys(porDre).sort().forEach(dre=>{
+    const n = porDre[dre];
+    if(/^[1-5]\./.test(dre)){ tot.real += n.real; tot.orc += n.orc; }
+    const subs = Object.entries(n.subs).filter(([s,v])=>Math.abs(v.real)>0.5||Math.abs(v.orc)>0.5);
+    const id = nos.length;
+    nos.push({id, pai:null, nivel:1, nome:dre, raiz:dre, real:n.real, orc:n.orc, temFilho:subs.length>1 || (subs.length===1 && subs[0][0]!=="Outros")});
+    subs.sort((a,b)=>Math.abs(b[1].real)-Math.abs(a[1].real)).forEach(([s,v])=>{
+      nos.push({id:nos.length, pai:id, nivel:2, nome:s, raiz:dre, real:v.real, orc:v.orc, temFilho:false});
+    });
+  });
+  return {nos, tot};
+}
+
+function dreSecao(){
+  // seção da Diretoria: filtro BU Portos / gerentes + mês
+  const fontes = ["BU", ...GERENTES];
+  const mesesDe = e => e==="BU" ? [...new Set(D.resOf.map(r=>r.anomes))].sort()
+                                : [...new Set(D.dre.filter(r=>r.gerente===e).map(r=>r.anomes))].sort();
+  if(!fontes.includes(dreEsc)) dreEsc = "BU";
+  let meses = mesesDe(dreEsc);
+  if(!meses.length) return "";
+  if(!dreMes || !meses.includes(dreMes)) dreMes = meses[meses.length-1];
+  const {nos, tot} = dreEsc==="BU" ? dreNosOficial(dreMes) : dreNosGerente(dreEsc, dreMes);
+  if(!nos.length) return "";
+  const dT = (tot.real!=null && tot.orc!=null)? tot.real-tot.orc : null;
+  const selE = '<select class="mes" onchange="dreEsc=this.value;render(abaAtual)">'+
+    fontes.map(f=>'<option value="'+f+'" '+(f===dreEsc?"selected":"")+'>'+(f==="BU"?"BU Portos (oficial)":cap(f))+'</option>').join("")+'</select>';
+  const selM = '<select class="mes" onchange="dreMes=this.value;render(abaAtual)">'+
+    meses.map(m=>'<option value="'+m+'" '+(m===dreMes?"selected":"")+'>'+nomeMes(m)+'</option>').join("")+'</select>';
+  return '<section style="margin-top:16px"><h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">DRE — Real × Orçado '+selE+selM+
+    '<span style="font-size:11px;font-weight:600;color:var(--muted)">use o + para detalhar cada linha</span></h2>'+
+    '<div class="rolagem"><table><tr><th>Linha</th><th class="dir">Real</th><th class="dir">Orçado</th><th class="dir">Δ R−O</th></tr>'+
+    dreArvoreHTML(nos, "dd_")+
+    '<tr class="total"><td style="padding-left:36px">Total'+(dreEsc==="BU"?"":" (1–5)")+'</td>'+
+    '<td class="dir num">'+fmtMil(tot.real||0)+'</td><td class="dir num">'+fmtMil(tot.orc||0)+'</td>'+
+    '<td class="dir num" style="color:'+(dT==null?"var(--muted)":dT>=0?"var(--verde)":"var(--verm)")+'">'+
+      (dT==null?"—":(dT>=0?"\u25b2 ":"\u25bc ")+fmtMil(Math.abs(dT)))+'</td></tr>'+
+    '</table></div></section>';
 }
 
 /* ---------- Seminovos (enxoval das lojas) ---------- */
