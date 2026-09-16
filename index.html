@@ -1718,6 +1718,65 @@ function initMapaFrota(G){
 }
 
 /* ================= navegação ================= */
+
+function sinaleiraRobos(){
+  if(!D.saude || !D.saude.length) return "";
+  const NOMES = {
+    os_corretivas:      ["Power BI · Corretivas",        "08:20 e 16:30"],
+    os_preventivas:     ["Power BI · Preventivas",       "08:20 e 16:30"],
+    custos_diario:      ["Power BI · Custos diário",     "08:20 e 16:30"],
+    faturamento:        ["Power BI · Faturamento",       "08:20 e 16:30"],
+    rxo_resultado:      ["Power BI · DRE oficial (RxO)", "sexta 07:40"],
+    rxo_equipamentos:   ["Power BI · Cadastro de máquinas", "sexta 07:40"],
+    razao_completo:     ["Power BI · Razão completo",    "sexta 07:40"],
+    base_orcamento:     ["Power BI · Base orçamento",    "sexta 07:40"],
+    horimetro_total:    ["Total · Horímetros",           "07:30"],
+    telemetria_posicoes:["Total · Posições GPS",         "07:30"],
+    enxoval:            ["Enxoval · Seminovos",          "08:05"],
+    rh_kpis:            ["RH · KPIs Visão Geral",        "07:50"],
+    rh_desligados:      ["RH · Turnover (ano)",          "07:50"],
+    rh_desligados_mes:  ["RH · Turnover (mês)",          "07:50"],
+    rh_absenteismo:     ["RH · Absenteísmo (ano)",       "07:50"],
+    rh_absenteismo_mes: ["RH · Absenteísmo (mês)",       "07:50"],
+    rxo_oficial:        ["Injeção manual · RxO oficial", "ritual mensal"],
+    custos_anual:       ["Injeção manual · Custos anual","ritual mensal"],
+    faturamento_mes:    ["Injeção manual · Faturamento mês", "sob demanda"],
+  };
+  const peso = {vermelho:0, amarelo:1, verde:2};
+  const farol = {verde:"var(--verde)", amarelo:"#D97706", vermelho:"var(--verm)"};
+  const rotulo = {verde:"em dia", amarelo:"atenção", vermelho:"parado"};
+  const linhas = [...D.saude].sort((a,b)=>(peso[a.status]??3)-(peso[b.status]??3) ||
+    (NOMES[a.coletor]?.[0]||a.coletor).localeCompare(NOMES[b.coletor]?.[0]||b.coletor));
+  const nv = D.saude.filter(s=>s.status==="verde").length;
+  const na = D.saude.filter(s=>s.status==="amarelo").length;
+  const nr = D.saude.filter(s=>s.status==="vermelho").length;
+  const quando = t => {
+    if(!t) return "—";
+    const d = new Date(String(t).replace(" ","T"));
+    const horas = Math.round((Date.now()-d.getTime())/36e5);
+    const rel = horas < 1 ? "há minutos" : horas < 24 ? `há ${horas}h` : `há ${Math.floor(horas/24)}d`;
+    return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) + " " +
+           d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) + ` · ${rel}`;
+  };
+  return `<section style="margin-top:16px"><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Sinaleira dos robôs
+      <span style="font-size:12px;font-weight:700"><span style="color:var(--verde)">● ${nv} em dia</span>
+      ${na? ` · <span style="color:#D97706">● ${na} atenção</span>`:""}
+      ${nr? ` · <span style="color:var(--verm)">● ${nr} parado</span>`:""}</span></h2>
+    <div class="nota">Verde = coletou nas últimas 24h · âmbar = 1–3 dias (normal nas fontes de ritual manual) · vermelho = 3+ dias sem coleta.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;margin-top:10px">` +
+    linhas.map(s=>{
+      const [nome, hora] = NOMES[s.coletor] || [s.coletor, "—"];
+      return `<div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start">
+        <span style="width:12px;height:12px;border-radius:50%;background:${farol[s.status]||"#999"};flex:none;margin-top:3px;box-shadow:0 0 0 3px ${farol[s.status]||"#999"}22"></span>
+        <div style="min-width:0">
+          <div style="font-weight:700;font-size:13px;color:var(--title)">${esc(nome)}</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Última: ${quando(s.executado_em)}
+            ${s.linhas_coletadas? ` · ${(+s.linhas_coletadas).toLocaleString("pt-BR")} linhas`:""}</div>
+          <div style="font-size:11px;color:var(--muted)">Plantão: ${esc(hora)} · <b style="color:${farol[s.status]}">${rotulo[s.status]||s.status}</b></div>
+        </div></div>`;
+    }).join("") + `</div></section>`;
+}
+
 function abaLinks(){
   const CTID = "7e4058f3-1c1f-4c3a-8151-03d3a2c3c30c";
   const pbi = id => `https://app.powerbi.com/reportEmbed?reportId=${id}&autoAuth=true&ctid=${CTID}`;
@@ -1741,7 +1800,7 @@ function abaLinks(){
         <div class="big-t" style="display:flex;justify-content:space-between;align-items:center">${esc(it.n)}<span style="color:var(--title)">↗</span></div>
         <div class="big-s" style="margin-top:6px">${esc(it.d)}</div>
       </div></a>`).join("") +
-    `</div></section>`).join("");
+    `</div></section>`).join("") + sinaleiraRobos();
 }
 
 function render(aba){
@@ -1818,5 +1877,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260916-230152 -->
+<!-- build 20260916-230607 -->
 </html>
