@@ -221,7 +221,7 @@ async function carregar(){
     pega("mv_cco_resultado_gerente?select=*"),
     pega("mv_cco_orcado_manut?select=*"),
     pegaTudo("v_cco_epi_itens?select=*"),
-    pega("mv_cco_resultado_oficial?select=anomes,dre,metrica,valor"),
+    pegaTudo("mv_cco_resultado_oficial?select=*"),
     pegaTudo("v_cco_epi_colaboradores?select=*"),
     pegaTudo("mv_cco_resultado_operacao?select=*"),
     pegaTudo("mv_cco_horimetro_atual?select=*"),
@@ -549,45 +549,7 @@ function abaDiretoria(){
     ${big("EPI em dia", (epiOk??"—")+"%", epiAtraso+" de "+epiAtivos+" funcionários com atraso", epiOk>=80?"ok":epiOk>=60?"warn":"bad")}
   </div>`;
 
-  // DRE consolidado da BU
-  const mesesDre = [...new Set(D.dre.map(r=>r.anomes))].sort();
-  if(!mesSel || !mesesDre.includes(mesSel)) mesSel = mesesDre.includes(m) ? m : mesesDre[mesesDre.length-1];
-  const porDreBU = {};
-  D.dre.filter(r=>r.anomes===mesSel).forEach(r=>{
-    if(!porDreBU[r.dre]) porDreBU[r.dre] = {dre:r.dre, realizado:0, orcado:0, subs:{}};
-    porDreBU[r.dre].realizado += +r.realizado; porDreBU[r.dre].orcado += +r.orcado;
-    if(r.sub){ if(!porDreBU[r.dre].subs[r.sub]) porDreBU[r.dre].subs[r.sub]={realizado:0,orcado:0};
-      porDreBU[r.dre].subs[r.sub].realizado += +r.realizado; porDreBU[r.dre].subs[r.sub].orcado += +r.orcado; }
-  });
-  const linhasBU = Object.values(porDreBU).sort((a,b)=>a.dre.localeCompare(b.dre));
-  const l15BU = linhasBU.filter(r=>/^[1-5]\./.test(r.dre));
-  const totRBU = l15BU.reduce((s,r)=>s+ +r.realizado,0), totOBU = l15BU.reduce((s,r)=>s+ +r.orcado,0);
-  const linhaDreBU = (rotulo, r, o, sub) => {
-    const p2 = pct(r, o); const delta = r - o;
-    return `<tr${sub?' style="background:#FAFBFE"':''}>
-      <td${sub?' style="padding-left:34px"':''}>${sub?`<span class="cel-sub" style="font-size:12px">└ ${esc(rotulo)}</span>`:esc(rotulo)}</td>
-      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${fmtMil(r)}</td>
-      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${o? fmtMil(o):"—"}</td>
-      <td class="dir num" style="color:${delta>=0?"var(--verde)":"var(--verm)"};font-weight:${sub?500:700}">${delta>=0?"▲":"▼"} ${fmtMil(Math.abs(delta))}</td>
-      <td class="dir num"${sub?' style="color:var(--muted)"':''}>${p2!=null? p2+"%":"—"}</td></tr>`;
-  };
-  h += `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">DRE Portos — consolidado
-      <select class="mes" onchange="mesSel=this.value;render(abaAtual)">
-        ${mesesDre.map(am=>`<option value="${am}" ${am===mesSel?"selected":""}>${nomeMes(am)}${am===agoraYM?" (parcial)":""}</option>`).join("")}
-      </select>${btnExcel('tb-dre-bu','dre_portos_'+mesSel)}</h2>
-    <div class="nota">BU inteira (todos os centros de lucro). Total = linhas 1 a 5, régua oficial.</div>
-    <table id="tb-dre-bu"><tr><th>Linha DRE</th><th class="dir">Realizado</th><th class="dir">Orçado</th><th class="dir">Δ O×R</th><th class="dir">%</th></tr>`;
-  h += linhasBU.map(r=>{
-    let bloco = linhaDreBU(r.dre, +r.realizado, +r.orcado, false);
-    const ordemSub = ["Folha","Custos de Manutenção","Outros Custos"];
-    Object.entries(r.subs).sort((a,b)=>ordemSub.indexOf(a[0])-ordemSub.indexOf(b[0]))
-      .forEach(([nome,v])=> bloco += linhaDreBU(nome, +v.realizado, +v.orcado, true));
-    return bloco;
-  }).join("");
-  const pTBU = pct(totRBU, totOBU);
-  h += `<tr class="total"><td>Total (1–5)</td><td class="dir num">${fmtMil(totRBU)}</td><td class="dir num">${fmtMil(totOBU)}</td>
-    <td class="dir num" style="color:${totRBU>=totOBU?"var(--verde)":"var(--verm)"}">${totRBU>=totOBU?"▲":"▼"} ${fmtMil(Math.abs(totRBU-totOBU))}</td>
-    <td class="dir num">${pTBU!=null?pTBU+"%":"—"}</td></tr></table></section>`;
+
 
   // desempenho por trimestre — BU consolidada (mesmo desenho do resumo do gerente)
   const anoTriBU = D.mesFechado.slice(0,4);
