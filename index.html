@@ -1413,41 +1413,79 @@ function dreSecaoInterna(){
 
 /* ---------- Leitura do mês (insights automáticos do DRE) ---------- */
 function dreInsights(nos, totR, totO){
-  const itens = [];
-  const bola = cor => '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+cor+';margin:5px 10px 0 0;flex:none"></span>';
-  const li = (cor, txt) => '<div style="display:flex;align-items:flex-start;margin:7px 0;font-size:13px;line-height:1.5">'+bola(cor)+'<span>'+txt+'</span></div>';
+  const F = v => fmtMil(Math.abs(v));
+  const par = txt => '<p style="margin:0 0 12px;font-size:13.5px;line-height:1.75;color:var(--text)">'+txt+'</p>';
+  const b = t => '<b>'+t+'</b>';
+  const vd = t => '<b style="color:var(--verde)">'+t+'</b>';
+  const vm = t => '<b style="color:var(--verm)">'+t+'</b>';
+  let ps = [];
 
+  // 1) o veredito
+  let dTot = null;
   if(totR!=null && totO!=null && Math.abs(totO)>0.5){
-    const d = totR - totO;
-    itens.push(li(d>=0?"var(--verde)":"var(--verm)",
-      "<b>Resultado "+(d>=0?"acima":"abaixo")+" do orçado:</b> "+fmtMil(totR)+" vs "+fmtMil(totO)+
-      " ("+(d>=0?"+":"−")+fmtMil(Math.abs(d)).replace("R$ ","R$ ")+")"));
+    dTot = totR - totO;
+    const pT = pct(totR, totO);
+    const tom = dTot>=0 ? "fechou "+vd("acima da meta") :
+      (pT!=null && pT>=90 ? "fechou um pouco "+vm("abaixo da meta") : "fechou "+vm("bem abaixo da meta"));
+    ps.push(par("O recorte "+tom+": resultado de "+b(fmtMil(totR))+" contra "+b(fmtMil(totO))+" orçados — "+
+      (dTot>=0? vd("+"+F(dTot)) : vm("−"+F(dTot)))+(pT!=null? " ("+pT+"% do combinado)":"")+"."));
   }
+
+  // 2) a receita
   const rec = nos.find(n=>n.nivel===1 && /^1\./.test(n.nome));
   if(rec && rec.real!=null && rec.orc!=null){
     const d = rec.real - rec.orc, p = pct(rec.real, rec.orc);
-    itens.push(li(d>=0?"var(--verde)":"var(--verm)",
-      "<b>Receita:</b> "+fmtMil(rec.real)+" — "+(p??"—")+"% do orçado ("+(d>=0?"+":"−")+fmtMil(Math.abs(d))+")"));
+    ps.push(par(d>=0
+      ? "A receita "+vd("não foi o problema")+": "+b(fmtMil(rec.real))+" faturados, "+p+"% do orçado — "+vd(F(d)+" a mais")+" que o combinado."
+      : "A receita "+vm("ficou devendo")+": "+b(fmtMil(rec.real))+", só "+p+"% do orçado ("+vm("−"+F(d))+")."));
   }
-  // desvios relevantes nos subgrupos (nível 2), com o caminho de origem
+
+  // 3) os vilões — com o culpado dentro do culpado
   const base = Math.max(10000, Math.abs(totO||totR||0)*0.005);
   const subs = nos.filter(n=>n.nivel===2 && n.real!=null && n.orc!=null && Math.abs(n.orc)>0.5)
-    .map(n=>({...n, d: n.real-n.orc, pai: n.pai!=null? (nos[n.pai]?.nome||"") : ""}));
-  subs.filter(s=>s.d < -base).sort((a,b)=>a.d-b.d).slice(0,3).forEach(s=>{
-    itens.push(li("var(--verm)", "<b>"+esc(s.nome)+"</b> <span style='color:var(--muted)'>("+esc(s.pai)+")</span>: estourou "+
-      fmtMil(Math.abs(s.d))+" — real "+fmtMil(s.real)+" vs orçado "+fmtMil(s.orc)));
+    .map(n=>({...n, d:n.real-n.orc, paiNome:(n.pai!=null? (nos[n.pai]?.nome||"").replace(/^\d+\.\s*(\( - \)\s*)?/,"") : "")}));
+  const viloes = subs.filter(s=>s.d < -base).sort((a,b)=>a.d-b.d).slice(0,3);
+  viloes.forEach((s,i)=>{
+    const pEst = s.orc? Math.round(100*Math.abs(s.d)/Math.abs(s.orc)) : null;
+    let drill = "";
+    const filhos = nos.filter(n=>n.pai===s.id && n.real!=null);
+    if(filhos.length){
+      const comOrc = filhos.filter(f=>f.orc!=null && Math.abs(f.orc)>0.5).map(f=>({...f, d:f.real-f.orc}));
+      const pior = comOrc.filter(f=>f.d<0).sort((a,b)=>a.d-b.d)[0];
+      if(pior && Math.abs(pior.d) > base*0.5){
+        drill = " — puxado principalmente por "+b(esc(pior.nome))+" ("+vm(F(pior.d)+" além do previsto")+")";
+      } else {
+        const maior = filhos.sort((a,b)=>Math.abs(b.real)-Math.abs(a.real))[0];
+        if(maior) drill = " — com "+b(esc(maior.nome))+" respondendo pela maior fatia ("+F(maior.real)+")";
+      }
+    }
+    const abre = i===0 ? "Do lado dos gastos, o maior vilão foi " : (i===1 ? "Na sequência, " : "E ainda ");
+    ps.push(par(abre+b(esc(s.nome))+" <span style='color:var(--muted)'>("+esc(s.paiNome)+")</span>, que estourou "+
+      vm(F(s.d))+(pEst!=null? " ("+pEst+"% acima do orçado)":"")+drill+"."));
   });
+
+  // 4) o lado bom
   const eco = subs.filter(s=>s.d > base).sort((a,b)=>b.d-a.d)[0];
-  if(eco) itens.push(li("var(--verde)", "<b>"+esc(eco.nome)+"</b> <span style='color:var(--muted)'>("+esc(eco.pai)+")</span>: "+
-      fmtMil(eco.d)+" melhor que o orçado"));
-  const semOrc = nos.filter(n=>n.nivel===1 && n.real!=null && (n.orc==null || Math.abs(n.orc)<0.5) && Math.abs(n.real)>base)
-    .map(n=>n.nome.replace(/^\d+\.\s*(\( - \)\s*)?/,""));
-  if(semOrc.length) itens.push(li("var(--yellow)", "<b>Sem orçado mapeado:</b> "+esc(semOrc.join(", "))+
-      " — o Δ dessas linhas não entra na comparação"));
-  if(!itens.length) return "";
+  if(eco){
+    const compensa = dTot!=null && dTot<0 ? " — segurou parte do tombo, mas não o suficiente" : "";
+    ps.push(par("Do lado bom, "+b(esc(eco.nome))+" <span style='color:var(--muted)'>("+esc(eco.paiNome)+")</span> veio "+
+      vd(F(eco.d)+" melhor que o orçado")+compensa+"."));
+  }
+
+  // 5) as ressalvas
+  const semOrc = nos.filter(n=>n.nivel===1 && n.real!=null && (n.orc==null || Math.abs(n.orc)<0.5) && Math.abs(n.real)>base);
+  if(semOrc.length){
+    const soma = semOrc.reduce((s,n)=>s+n.real,0);
+    ps.push(par("Uma ressalva de leitura: "+b(esc(semOrc.map(n=>n.nome.replace(/^\d+\.\s*(\( - \)\s*)?/,"")).join(" e ")))+
+      " ("+F(soma)+" no real, somados) "+b("não têm orçado mapeado")+" — o desvio dessas linhas fica fora da comparação, e o retrato completo depende delas."));
+  }
+
+  if(!ps.length) return "";
   return '<section style="margin-top:14px"><h2>Leitura do mês</h2>'+
-    '<div class="nota" style="margin-bottom:8px">Gerada automaticamente a partir do recorte selecionado — muda junto com o mês e a operação.</div>'+
-    itens.join("")+'</section>';
+    '<div style="background:#F7F9FE;border-left:4px solid var(--royal);border-radius:0 10px 10px 0;padding:16px 18px 6px;margin-top:10px">'+
+    ps.join("")+
+    '<p style="margin:0 0 10px;font-size:11px;color:var(--muted)">Análise gerada automaticamente do recorte selecionado — muda junto com o mês e a operação.</p>'+
+    '</div></section>';
 }
 
 /* ---------- Custos de Manutenção (aba do gerente) ---------- */
@@ -1664,8 +1702,10 @@ function initMapaFrota(G){
   fr.forEach(f=>{
     const dd = dias(f.location_datetime||f.snapshot_date);
     const cor = dd>7 ? "#d63131" : f.engine_on===true ? "#00A843" : f.engine_on===false ? "#7A8699" : "#0D33A8";
-    const m = L.circleMarker([f.latitude, f.longitude],
-      {radius:7, color:"#fff", weight:1.5, fillColor:cor, fillOpacity:.9}).addTo(mapa);
+    const emoji = {maquina:"🚜", caminhao:"🚛", empilhadeira:"🏗️", plataforma:"🛗", veiculo:"🚗"}[(f.categoria||"").toLowerCase()] || "⚙️";
+    const pino = L.divIcon({className:"", iconSize:[30,30], iconAnchor:[15,30], popupAnchor:[0,-28],
+      html:`<div style="width:28px;height:28px;background:${cor};border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:13px;line-height:1">${emoji}</span></div>`});
+    const m = L.marker([f.latitude, f.longitude], {icon: pino}).addTo(mapa);
     m.bindPopup(`<div style="font-family:'Open Sans';font-size:12px;line-height:1.5">
       <b style="font-family:Montserrat;color:#002A9A">${esc(f.ativo)}</b><br>
       ${esc(f.description||f.model||"")}<br>
@@ -1780,5 +1820,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260916-224824 -->
+<!-- build 20260916-225753 -->
 </html>
