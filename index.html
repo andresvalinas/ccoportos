@@ -915,7 +915,8 @@ function gerDreInterna(G){
     '<td class="dir num">'+fmtMil(totR)+'</td><td class="dir num">'+fmtMil(totO)+'</td>'+
     '<td class="dir num" style="color:'+(dT>=0?"var(--verde)":"var(--verm)")+'">'+(dT>=0?"\u25b2 ":"\u25bc ")+fmtMil(Math.abs(dT))+'</td></tr>'+
     '</table></div>'+
-    '<div class="nota" style="margin-top:8px">Realizado do razão até a conta contábil; orçado disponível até o 3º nível. Fonte: razão completo + base orçamento.</div></section>';
+    '<div class="nota" style="margin-top:8px">Realizado do razão até a conta contábil; orçado disponível até o 3º nível. Fonte: razão completo + base orçamento.</div></section>'+
+    dreInsights(nos, totR, totO);
 }
 
 function gerOsPrev(G){
@@ -1405,9 +1406,49 @@ function dreSecaoInterna(){
     '<td class="dir num">'+fmtMil(tot.real||0)+'</td><td class="dir num">'+fmtMil(tot.orc||0)+'</td>'+
     '<td class="dir num" style="color:'+(dT==null?"var(--muted)":dT>=0?"var(--verde)":"var(--verm)")+'">'+
       (dT==null?"—":(dT>=0?"\u25b2 ":"\u25bc ")+fmtMil(Math.abs(dT)))+'</td></tr>'+
-    '</table></div></section>';
+    '</table></div></section>' + dreInsights(nos, tot.real, tot.orc);
 }
 
+
+
+/* ---------- Leitura do mês (insights automáticos do DRE) ---------- */
+function dreInsights(nos, totR, totO){
+  const itens = [];
+  const bola = cor => '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+cor+';margin:5px 10px 0 0;flex:none"></span>';
+  const li = (cor, txt) => '<div style="display:flex;align-items:flex-start;margin:7px 0;font-size:13px;line-height:1.5">'+bola(cor)+'<span>'+txt+'</span></div>';
+
+  if(totR!=null && totO!=null && Math.abs(totO)>0.5){
+    const d = totR - totO;
+    itens.push(li(d>=0?"var(--verde)":"var(--verm)",
+      "<b>Resultado "+(d>=0?"acima":"abaixo")+" do orçado:</b> "+fmtMil(totR)+" vs "+fmtMil(totO)+
+      " ("+(d>=0?"+":"−")+fmtMil(Math.abs(d)).replace("R$ ","R$ ")+")"));
+  }
+  const rec = nos.find(n=>n.nivel===1 && /^1\./.test(n.nome));
+  if(rec && rec.real!=null && rec.orc!=null){
+    const d = rec.real - rec.orc, p = pct(rec.real, rec.orc);
+    itens.push(li(d>=0?"var(--verde)":"var(--verm)",
+      "<b>Receita:</b> "+fmtMil(rec.real)+" — "+(p??"—")+"% do orçado ("+(d>=0?"+":"−")+fmtMil(Math.abs(d))+")"));
+  }
+  // desvios relevantes nos subgrupos (nível 2), com o caminho de origem
+  const base = Math.max(10000, Math.abs(totO||totR||0)*0.005);
+  const subs = nos.filter(n=>n.nivel===2 && n.real!=null && n.orc!=null && Math.abs(n.orc)>0.5)
+    .map(n=>({...n, d: n.real-n.orc, pai: n.pai!=null? (nos[n.pai]?.nome||"") : ""}));
+  subs.filter(s=>s.d < -base).sort((a,b)=>a.d-b.d).slice(0,3).forEach(s=>{
+    itens.push(li("var(--verm)", "<b>"+esc(s.nome)+"</b> <span style='color:var(--muted)'>("+esc(s.pai)+")</span>: estourou "+
+      fmtMil(Math.abs(s.d))+" — real "+fmtMil(s.real)+" vs orçado "+fmtMil(s.orc)));
+  });
+  const eco = subs.filter(s=>s.d > base).sort((a,b)=>b.d-a.d)[0];
+  if(eco) itens.push(li("var(--verde)", "<b>"+esc(eco.nome)+"</b> <span style='color:var(--muted)'>("+esc(eco.pai)+")</span>: "+
+      fmtMil(eco.d)+" melhor que o orçado"));
+  const semOrc = nos.filter(n=>n.nivel===1 && n.real!=null && (n.orc==null || Math.abs(n.orc)<0.5) && Math.abs(n.real)>base)
+    .map(n=>n.nome.replace(/^\d+\.\s*(\( - \)\s*)?/,""));
+  if(semOrc.length) itens.push(li("var(--yellow)", "<b>Sem orçado mapeado:</b> "+esc(semOrc.join(", "))+
+      " — o Δ dessas linhas não entra na comparação"));
+  if(!itens.length) return "";
+  return '<section style="margin-top:14px"><h2>Leitura do mês</h2>'+
+    '<div class="nota" style="margin-bottom:8px">Gerada automaticamente a partir do recorte selecionado — muda junto com o mês e a operação.</div>'+
+    itens.join("")+'</section>';
+}
 
 /* ---------- Custos de Manutenção (aba do gerente) ---------- */
 let gcMes = null;
@@ -1547,10 +1588,20 @@ function gerFrota(G){
   const cadastro = D.equipG ? D.equipG[G]||[] : [];
   const semGps = cadastro.filter(e=>!gpsSet.has(e.ativo));
   const pctGps = cadastro.length ? Math.round(100*fr.length/cadastro.length) : null;
-  let h = `<div class="grid-big">
+  const lig = fr.filter(f=>f.engine_on===true).length;
+  const des = fr.filter(f=>f.engine_on===false).length;
+  const cats = {};
+  fr.forEach(f=>{ const c=(f.categoria||"outros").toLowerCase(); cats[c]=(cats[c]||0)+1; });
+  const rotCat = {maquina:"Máquinas", caminhao:"Caminhões", empilhadeira:"Empilhadeiras", plataforma:"Plataformas", veiculo:"Veículos", outros:"Outros"};
+  const chips = Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,n])=>
+    `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--white);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--title)">${n} <span style="font-weight:600;color:var(--muted)">${rotCat[c]||cap(c)}</span></span>`).join(" ");
+  let h = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
     ${big("Máquinas no mapa", fr.length, cadastro.length? `de ${cadastro.length} ativos no cadastro (${pctGps}%)` : "com última posição conhecida", fr.length? "ok":"bad")}
+    ${big("Ligadas agora", lig, "motor ligado no último sinal", lig? "ok":"")}
+    ${big("Desligadas", des, "motor desligado no último sinal", "")}
     ${big("Sem rastreamento", semGps.length, "ativos do cadastro sem posição conhecida", semGps.length>cadastro.length*0.4?"bad":semGps.length?"warn":"ok")}
-  </div>`;
+  </div>
+  ${chips? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 14px">${chips}</div>`:""}`;
   if(!fr.length){
     h += `<section><h2>Frota no mapa</h2><div class="nota">Nenhuma posição de telemetria mapeada para este gerente ainda. O coletor de telemetria (portal TOTAL) está aguardando reativação.</div></section>`;
     return h;
@@ -1587,7 +1638,7 @@ function gerFrota(G){
   const dias = d => Math.floor((Date.now()-new Date(d).getTime())/864e5);
   const desatualizado = ultima && dias(ultima) > 3;
   h += `<section><h2>Frota no mapa</h2>
-    <div class="nota">${desatualizado? `⚠ Posições de ${ultimaTxt} — o coletor de telemetria está parado; as máquinas podem ter se movido desde então. `:""}Clique no ponto para detalhes. Verde = sinal recente · âmbar = 3–7 dias · vermelho = 7+ dias.</div>
+    <div class="nota">${desatualizado? `⚠ Posições de ${ultimaTxt} — o coletor de telemetria está parado; as máquinas podem ter se movido desde então. `:""}Clique no ponto para detalhes. Verde = motor ligado · cinza = desligado · azul = sem info de motor · vermelho = sem sinal há 7+ dias.</div>
     <div id="mapa-frota" style="height:520px;border-radius:8px;border:1px solid var(--border)"></div>
   </section>`;
   return h;
@@ -1612,13 +1663,14 @@ function initMapaFrota(G){
   const pts = [];
   fr.forEach(f=>{
     const dd = dias(f.location_datetime||f.snapshot_date);
-    const cor = dd<=2 ? "#00A843" : dd<=7 ? "#D97706" : "#d63131";
+    const cor = dd>7 ? "#d63131" : f.engine_on===true ? "#00A843" : f.engine_on===false ? "#7A8699" : "#0D33A8";
     const m = L.circleMarker([f.latitude, f.longitude],
       {radius:7, color:"#fff", weight:1.5, fillColor:cor, fillOpacity:.9}).addTo(mapa);
     m.bindPopup(`<div style="font-family:'Open Sans';font-size:12px;line-height:1.5">
       <b style="font-family:Montserrat;color:#002A9A">${esc(f.ativo)}</b><br>
       ${esc(f.description||f.model||"")}<br>
       <b>Operação:</b> ${esc(f.nome_cl||"—")}<br>
+      <b>Motor:</b> ${f.engine_on===true?'<span style="color:#00A843;font-weight:700">Ligado</span>':f.engine_on===false?'Desligado':'—'}${f.speed!=null && +f.speed>0? ` · ${Math.round(+f.speed)} km/h`:""}<br>
       <b>Horímetro:</b> ${f.hourmeter? (+f.hourmeter).toLocaleString("pt-BR")+" h":"—"}<br>
       <b>Posição:</b> ${f.location_datetime? new Date(f.location_datetime).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"—"}
       · fonte ${esc((f.location_source||"?").toUpperCase())}</div>`);
@@ -1728,5 +1780,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260916-205010 -->
+<!-- build 20260916-224824 -->
 </html>
