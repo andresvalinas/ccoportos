@@ -156,7 +156,7 @@ const GERENTES = ["ANDRÉS","CÁSSIA","KASSIANO","MARIANA","UESLEI"];
 const NOMES = {"ANDRÉS":"Andrés Valinas","MARIANA":"Mariana Abreu","CÁSSIA":"Cassia Palmeira",
                "KASSIANO":"Kassiano do Carmo","UESLEI":"Ueslei Mota"};
 const nomeCompleto = g => NOMES[(g||"").toUpperCase()] || cap(g||"");
-const SUBS = ["Resumo","DRE","Pessoas","Faturamento","Corretivas & Preventivas","EPI","Frota","Seminovos"];
+const SUBS = ["Resumo","DRE","Custos Manutenção","Pessoas","Faturamento","Corretivas & Preventivas","EPI","Frota","Seminovos"];
 const cap = s => s[0]+s.slice(1).toLowerCase();
 
 const fmtMi = v => v==null ? "—" : "R$ " + (v/1e6).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}) + " mi";
@@ -1408,6 +1408,93 @@ function dreSecaoInterna(){
     '</table></div></section>';
 }
 
+
+/* ---------- Custos de Manutenção (aba do gerente) ---------- */
+let gcMes = null;
+
+function gerCustos(G){
+  try { return gerCustosInterna(G); }
+  catch(e){ return '<section><h2>Custos de Manutenção</h2><div class="aviso">⚠ Erro: '+esc(e.message)+' — me avise com um print.</div></section>'; }
+}
+
+function gerCustosInterna(G){
+  const meses = [...new Set(D.custos.filter(r=>r.gerente===G).map(r=>r.anomes))].sort();
+  if(!meses.length) return '<section><h2>Custos de Manutenção</h2><div class="nota">Sem custos coletados para este gerente ainda.</div></section>';
+  if(!gcMes || !meses.includes(gcMes)) gcMes = meses[meses.length-1];
+  const agoraYM = String(new Date().getFullYear()*100 + (new Date().getMonth()+1));
+  const selM = '<select class="mes" onchange="gcMes=this.value;render(abaAtual)">'+
+    meses.map(m=>'<option value="'+m+'" '+(m===gcMes?"selected":"")+'>'+nomeMes(m)+(m===agoraYM?" (parcial)":"")+'</option>').join("")+'</select>';
+
+  const custoMes = +((D.custos.find(r=>r.gerente===G && r.anomes===gcMes)||{}).custo||0);
+  const orcMes = +((D.orcManut.find(r=>r.gerente===G && r.anomes===gcMes)||{}).orcado_manut||0);
+  const pM = pct(custoMes, orcMes);
+  const anoSel = gcMes.slice(0,4);
+  const acumR = D.custos.filter(r=>r.gerente===G && r.anomes.slice(0,4)===anoSel && r.anomes<=gcMes)
+    .reduce((s,r)=>s+ +r.custo,0);
+  const acumO = D.orcManut.filter(r=>r.gerente===G && r.anomes.slice(0,4)===anoSel && r.anomes<=gcMes)
+    .reduce((s,r)=>s+ +r.orcado_manut,0);
+  const pA = pct(acumR, acumO);
+  const maqMes = D.custoMaq.filter(r=>r.gerente===G && r.anomes===gcMes)
+    .map(r=>({...r, custo:+r.custo})).sort((a,b)=>b.custo-a.custo);
+  const opMes = D.custoOp.filter(r=>r.gerente===G && r.anomes===gcMes)
+    .map(r=>({...r, custo_real:+r.custo_real||0, custo_orc:+r.custo_orc||0}))
+    .filter(r=>Math.abs(r.custo_real)>0.5 || Math.abs(r.custo_orc)>0.5)
+    .sort((a,b)=>b.custo_real-a.custo_real);
+
+  let h = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+
+    '<span style="font-size:13px;font-weight:700;color:var(--muted)">Mês:</span>'+selM+'</div>';
+  h += '<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">'+
+    big("Custo "+nomeMes(gcMes)+(gcMes===agoraYM?" (parcial)":""), fmtMil(custoMes),
+        orcMes? ((pM??"—")+"% do orçado ("+fmtMil(orcMes)+")") : "sem orçado mapeado",
+        pM==null?"":pM<=85?"ok":pM<=100?"warn":"bad")+
+    big("Acumulado "+anoSel, fmtAuto(acumR),
+        acumO? ((pA??"—")+"% do orçado acumulado ("+fmtAuto(acumO)+")") : "jan até "+nomeMes(gcMes),
+        pA==null?"":pA<=95?"ok":pA<=105?"warn":"bad")+
+    big("Máquinas com custo", maqMes.length, "no mês · maior: "+(maqMes[0]? maqMes[0].maquina+" ("+fmtMil(maqMes[0].custo)+")":"—"), "")+
+  '</div>';
+
+  // custo por operação
+  if(opMes.length){
+    h += '<section><h2>Custo por operação — '+nomeMes(gcMes)+'</h2><div class="rolagem"><table id="tb-gcop">'+
+      '<tr>'+["Operação","Real","Orçado","% do orçado"].map((t,i)=>'<th class="'+(i?"dir":"")+'" onclick="ordenaTabela(\'tb-gcop\','+i+')" title="Clique para ordenar">'+t+'</th>').join("")+'</tr>'+
+      opMes.map(r=>{
+        const p2 = pct(r.custo_real, r.custo_orc);
+        return '<tr><td>'+esc(r.nome_cl||r.cl)+'</td>'+
+          '<td class="dir num" data-v="'+r.custo_real+'">'+fmtMil(r.custo_real)+'</td>'+
+          '<td class="dir num" data-v="'+r.custo_orc+'" style="color:var(--muted)">'+(r.custo_orc?fmtMil(r.custo_orc):"—")+'</td>'+
+          '<td class="dir num" data-v="'+(p2??-1)+'" style="font-weight:700;color:'+(p2==null?"var(--muted)":p2<=85?"var(--verde)":p2<=100?"var(--yellow)":"var(--verm)")+'">'+(p2!=null?p2+"%":"—")+'</td></tr>';
+      }).join("")+'</table></div></section>';
+  }
+
+  // custo por máquina
+  if(maqMes.length){
+    const lojas = [];
+    h += '<section><h2>Custo por máquina — '+nomeMes(gcMes)+'</h2>'+
+      toolbar('tb-gcmaq','🔎 Buscar máquina…', lojas, maqMes.length+' máquinas · ordenado por custo', 'custos_'+G.toLowerCase())+
+      '<div class="rolagem"><table id="tb-gcmaq">'+
+      '<tr>'+["Máquina","Custo no mês","Lançamentos"].map((t,i)=>'<th class="'+(i?"dir":"")+'" onclick="ordenaTabela(\'tb-gcmaq\','+i+')" title="Clique para ordenar">'+t+'</th>').join("")+'</tr>'+
+      maqMes.map(r=>'<tr data-busca="'+esc(String(r.maquina).toLowerCase())+'">'+
+        '<td class="num"><div class="cel-main">'+esc(r.maquina)+'</div>'+
+        (D.equipIdx[r.maquina]? '<div class="cel-sub">'+esc(D.equipIdx[r.maquina].nome_cl||"")+'</div>':'')+'</td>'+
+        '<td class="dir num" data-v="'+r.custo+'">'+fmtMil(r.custo)+'</td>'+
+        '<td class="dir num" data-v="'+(+r.lancamentos||0)+'">'+(r.lancamentos||"—")+'</td></tr>').join("")+
+      '</table></div></section>';
+  }
+  // evolução mensal (real × orçado)
+  h += '<section><h2>Evolução no ano — Real × Orçado</h2><div class="rolagem"><table>'+
+    '<tr><th>Mês</th><th class="dir">Real</th><th class="dir">Orçado</th><th class="dir">% do orçado</th></tr>'+
+    meses.filter(m=>m.slice(0,4)===anoSel).map(m=>{
+      const r = +((D.custos.find(x=>x.gerente===G && x.anomes===m)||{}).custo||0);
+      const o = +((D.orcManut.find(x=>x.gerente===G && x.anomes===m)||{}).orcado_manut||0);
+      const p2 = pct(r,o);
+      return '<tr'+(m===gcMes?' style="background:#F0F4FF"':'')+'><td>'+nomeMes(m)+(m===agoraYM?' <span class="cel-sub">(parcial)</span>':'')+'</td>'+
+        '<td class="dir num">'+fmtMil(r)+'</td><td class="dir num" style="color:var(--muted)">'+(o?fmtMil(o):"—")+'</td>'+
+        '<td class="dir num" style="font-weight:700;color:'+(p2==null?"var(--muted)":p2<=85?"var(--verde)":p2<=100?"var(--yellow)":"var(--verm)")+'">'+(p2!=null?p2+"%":"—")+'</td></tr>';
+    }).join("")+'</table></div></section>';
+
+  return h;
+}
+
 /* ---------- Seminovos (enxoval das lojas) ---------- */
 function gerSeminovos(G){
   if(!D.enx.length){
@@ -1596,6 +1683,7 @@ function render(aba){
                 : subAba==="Faturamento" ? gerFaturamento(G)
                 : subAba==="Frota" ? gerFrota(G)
                 : subAba==="Seminovos" ? gerSeminovos(G)
+                : subAba==="Custos Manutenção" ? gerCustos(G)
                 : gerEPI(G));
     if(subAba==="Frota") setTimeout(()=>initMapaFrota(G), 50);
   }
@@ -1640,5 +1728,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260916-204224 -->
+<!-- build 20260916-205010 -->
 </html>
