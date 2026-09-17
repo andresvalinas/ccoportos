@@ -208,7 +208,7 @@ async function pega(caminho){
 
 const tenta = pr => pr.catch(()=>[]);
 async function carregar(){
-  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota] = await Promise.all([
+  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu] = await Promise.all([
     pega("mv_cco_rxo_gerente?select=*"),
     pega("mv_cco_custos_gerente_mes?select=*"),
     pega("v_cco_epi_gerente?select=*"),
@@ -239,6 +239,8 @@ async function carregar(){
     pegaTudo("mv_cco_custo_maquina?select=*"),
     pegaTudo("mv_cco_equipamentos?select=ativo,descricao,marca,modelo,nome_cl,gerente"),
     pegaTudo("mv_cco_frota_mapa?select=ativo,description,model,nome_cl,latitude,longitude,location_datetime,location_source,hourmeter,snapshot_date,gerente&gerente=not.is.null"),
+    tenta(pegaTudo("mv_cco_nps_gerente?select=*")),
+    tenta(pega("mv_cco_nps_resumo?select=*&centro_lucro=is.null")),
   ]);
   const canon = g => { const u=(g||"").toUpperCase();
     if(u.includes("PEDRO AUGUSTO LEAL")) return "CÁSSIA";
@@ -249,7 +251,7 @@ async function carregar(){
     return null; };
   corr.forEach(o=>o.g=canon(o.gerente));
   prev.forEach(o=>o.g=canon(o.gerente));
-  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx};
+  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu};
   D.rhTot = (rhTot && rhTot[0]) || null;
   D.rhK = (rhKpis && rhKpis[0]) || null;
   const pctNorm = v => { v = +v||0; return v <= 1 ? v*100 : v; };
@@ -516,6 +518,13 @@ function abaDiretoria(){
     ${big("Máquinas em seminovos", D.enx.length,
         D.enx.length? D.enx.filter(e=>/negocia/i.test(e.situacao||"")).length+" em negociação de venda" : "aguardando 1ª coleta",
         D.enx.length>30?"bad":D.enx.length>15?"warn":"")}
+    ${(()=>{ const pt=(D.npsBu||[]).find(b=>/portos/i.test(b.bu||""));
+      if(!pt || pt.nps==null) return big("NPS da BU","—","robô de NPS: 1ª coleta pendente","");
+      const emp=(D.npsBu||[]).reduce((a,b)=>({r:a.r+(+b.respondidas||0),p:a.p+(+b.promotores||0),d:a.d+(+b.detratores||0)}),{r:0,p:0,d:0});
+      const npsEmp = emp.r? Math.round(1000*(emp.p-emp.d)/emp.r)/10 : null;
+      return big("NPS da BU ("+(pt.mes||"")+")", (+pt.nps).toLocaleString("pt-BR"),
+        "aderência "+(+pt.aderencia_pct).toLocaleString("pt-BR")+"% · "+pt.promotores+" prom · "+pt.neutros+" neut · "+pt.detratores+" detr"+(npsEmp!=null?" · empresa "+npsEmp.toLocaleString("pt-BR"):""),
+        +pt.nps>=50?"ok":+pt.nps>=0?"warn":"bad"); })()}
   </div>`;
 
   h += dreSecao();
@@ -674,6 +683,32 @@ function metricasGerente(G){
     custoM, orcM, pCusto:pct(custoM,orcM), osk, pvk, epiL, at, atr, epiOk:pct(at-atr,at)};
 }
 
+/* ---------- NPS por contrato (Resumo do gerente) ---------- */
+function npsSecaoGerente(G){
+  const ng = (D.nps||[]).filter(n=>n.gerente===G);
+  if(!ng.length) return "";
+  const peso = n => +n.detratores>0 ? 0 : (+n.respondidas>0 && +n.promotores===0 ? 1 : (+n.respondidas>0 ? 2 : 3));
+  ng.sort((a,b)=>peso(a)-peso(b) || String(a.cliente).localeCompare(String(b.cliente)));
+  const rotulo = n => {
+    if(+n.respondidas===0) return '<span style="color:var(--muted)">Sem resposta</span>';
+    if(+n.detratores>0)    return '<span style="color:var(--verm);font-weight:700">Detrator</span>';
+    if(+n.promotores>0 && +n.neutros===0) return '<span style="color:var(--verde);font-weight:700">Promotor</span>';
+    if(+n.promotores>0)    return '<span style="color:var(--verde);font-weight:700">Promotor + Neutro</span>';
+    return '<span style="color:var(--ambar);font-weight:700">Neutro</span>';
+  };
+  const linhas = ng.map(n=>{
+    const fb = n.fb_detrator ? `<div class="cel-sub" style="max-width:560px;white-space:normal" title="${esc(n.fb_detrator)}">&ldquo;${esc(n.fb_detrator.length>220? n.fb_detrator.slice(0,220)+"…" : n.fb_detrator)}&rdquo;</div>` : "";
+    return `<tr><td><span class="cel-main">${esc(n.cliente||"—")}</span>${fb}</td>
+      <td>${esc(n.centro_lucro)}</td>
+      <td class="dir">${n.respondidas} de ${n.pesquisas}</td>
+      <td>${rotulo(n)}</td></tr>`;
+  }).join("");
+  const mes = ng[0].mes || "";
+  return `<section><h2>NPS por contrato${mes? " — "+esc(mes) : ""}</h2>
+    <div class="nota">Pesquisa oficial de NPS (relatório corporativo). Detratores no topo; feedback registrado aparece sob o contrato.</div>
+    <table><tr><th>Contrato</th><th>CL</th><th class="dir">Respostas</th><th>Classificação</th></tr>${linhas}</table></section>`;
+}
+
 /* ---------- Resumo executivo ---------- */
 function gerResumo(G){
   const M = metricasGerente(G);
@@ -693,13 +728,23 @@ function gerResumo(G){
         M.orcM?("orçado "+fmtMil(M.orcM)+" · "+(M.pCusto??"—")+"% atingido"):"sem orçado mapeado",
         M.pCusto==null?"":M.pCusto<=85?"ok":M.pCusto<=100?"warn":"bad")}
   </div>
-  <div class="grid-big" style="margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));max-width:640px">
+  <div class="grid-big" style="margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));max-width:960px">
     ${big("Máquinas", (D.equipG[G]||[]).length, "ativos no cadastro oficial", "")}
     ${(()=>{ const eg = D.enx.filter(e=>e.gerente===G);
       return big("Máquinas em seminovos", eg.length,
         eg.length? eg.filter(e=>/negocia/i.test(e.situacao||"")).length+" em negociação de venda" : "frota 100% na operação",
         eg.length>15?"bad":eg.length>5?"warn":eg.length?"":"ok"); })()}
+    ${(()=>{ const ng=(D.nps||[]).filter(n=>n.gerente===G);
+      if(!ng.length) return big("NPS","—","sem pesquisas no período","");
+      const t=ng.reduce((a,n)=>({pq:a.pq+(+n.pesquisas||0),r:a.r+(+n.respondidas||0),p:a.p+(+n.promotores||0),d:a.d+(+n.detratores||0)}),{pq:0,r:0,p:0,d:0});
+      const v=t.r?Math.round(1000*(t.p-t.d)/t.r)/10:null;
+      const ad=t.pq?Math.round(1000*t.r/t.pq)/10:null;
+      return big("NPS ("+(ng[0].mes||"")+")", v==null?"—":v.toLocaleString("pt-BR"),
+        "aderência "+(ad==null?"—":ad.toLocaleString("pt-BR"))+"% ("+t.r+" de "+t.pq+")"+(t.d?" · "+t.d+" detrator(es)":""),
+        v==null?"":v>=50?"ok":v>=0?"warn":"bad"); })()}
   </div>`;
+
+  h += npsSecaoGerente(G);
 
   // highlights automáticos
   const hls = [];
@@ -721,6 +766,9 @@ function gerResumo(G){
     const p0 = prevG[0];
     hls.push(hl("var(--verm)", `<b>Preventiva mais estourada:</b> ${esc(p0.equipamento)} com <b>${Math.round(p0.aderencia).toLocaleString("pt-BR")}h</b> vencidas (${esc(splitOpOS(p0.operacao).op)}).`));
   }
+  const npsDetr = (D.nps||[]).filter(n=>n.gerente===G && +n.detratores>0);
+  if(npsDetr.length) hls.push(hl("var(--verm)",
+    `<b>NPS:</b> ${npsDetr.reduce((s,n)=>s+ +n.detratores,0)} detrator(es) em ${npsDetr.map(n=>esc(n.cliente)).join(", ")} — feedback completo na tabela de NPS.`));
   const epiRuins = agrupaEpi(M.epiL).filter(e=>e.at>=5).sort((a,b)=>a.ok-b.ok)[0];
   if(epiRuins) hls.push(hl(epiRuins.ok>=60?"var(--ambar)":"var(--verm)",
     `<b>EPI mais crítico:</b> ${esc(epiRuins.op)}/${esc(epiRuins.cid)} com apenas ${epiRuins.ok}% em dia (${epiRuins.atr} de ${epiRuins.at}).`));
@@ -1886,5 +1934,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260916-231327 -->
+<!-- build 20260917-124500 -->
 </html>
