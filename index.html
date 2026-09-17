@@ -185,6 +185,7 @@ let opCP = "";      // filtro de operação da aba Corretivas & Preventivas
 let prioTop = "1";  // prioridade do quadro de mais antigas (1=Urgente)
 let opTri = "";     // operação do desempenho por trimestre
 let pessPer = "ano"; // período da aba Pessoas: ano | mes
+let npsOrd = "prio"; // ordem da tabela de NPS: prio | nota_asc | nota_desc | alfa
 let fatPer = "vida"; // período do faturamento: vida | mes
 const prioSel = {}; // filtro de prioridade por quadro
 
@@ -688,7 +689,16 @@ function npsSecaoGerente(G){
   const ng = (D.nps||[]).filter(n=>n.gerente===G);
   if(!ng.length) return "";
   const peso = n => +n.detratores>0 ? 0 : (+n.respondidas>0 && +n.promotores===0 ? 1 : (+n.respondidas>0 ? 2 : 3));
-  ng.sort((a,b)=>peso(a)-peso(b) || String(a.cliente).localeCompare(String(b.cliente)));
+  const notaDe = n => { const v=(n.notas||"").split(",").map(s=>parseFloat(s)).filter(x=>!isNaN(x)); return v.length? v : null; };
+  const alfa = (a,b)=>String(a.cliente||"").localeCompare(String(b.cliente||""),"pt-BR");
+  if(npsOrd==="alfa") ng.sort(alfa);
+  else if(npsOrd==="nota_asc") ng.sort((a,b)=>{ const na=notaDe(a),nb=notaDe(b);
+    if(!na&&!nb) return alfa(a,b); if(!na) return 1; if(!nb) return -1;
+    return Math.min(...na)-Math.min(...nb) || alfa(a,b); });
+  else if(npsOrd==="nota_desc") ng.sort((a,b)=>{ const na=notaDe(a),nb=notaDe(b);
+    if(!na&&!nb) return alfa(a,b); if(!na) return 1; if(!nb) return -1;
+    return Math.max(...nb)-Math.max(...na) || alfa(a,b); });
+  else ng.sort((a,b)=>peso(a)-peso(b) || alfa(a,b));
   const rotulo = n => {
     if(+n.respondidas===0) return '<span style="color:var(--muted)">Sem resposta</span>';
     if(+n.detratores>0)    return '<span style="color:var(--verm);font-weight:700">Detrator</span>';
@@ -706,8 +716,14 @@ function npsSecaoGerente(G){
       <td>${rotulo(n)}</td></tr>`;
   }).join("");
   const mes = ng[0].mes || "";
-  return `<section><h2>NPS por contrato${mes? " — "+esc(mes) : ""}</h2>
-    <div class="nota">Pesquisa oficial de NPS (relatório corporativo). Detratores no topo; <b>+</b> abre o comentário do cliente.</div>
+  return `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">NPS por contrato${mes? " — "+esc(mes) : ""}
+      <select class="mes" onchange="npsOrd=this.value;render(abaAtual)">
+        <option value="prio" ${npsOrd==="prio"?"selected":""}>Detratores no topo</option>
+        <option value="nota_asc" ${npsOrd==="nota_asc"?"selected":""}>Nota (menor primeiro)</option>
+        <option value="nota_desc" ${npsOrd==="nota_desc"?"selected":""}>Nota (maior primeiro)</option>
+        <option value="alfa" ${npsOrd==="alfa"?"selected":""}>Ordem alfabética</option>
+      </select></h2>
+    <div class="nota">Pesquisa oficial de NPS (relatório corporativo). <b>+</b> abre o comentário do cliente.</div>
     <table><tr><th>Contrato</th><th>CL</th><th class="dir">Nota</th><th>Classificação</th></tr>${linhas}</table></section>`;
 }
 
@@ -1935,5 +1951,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260917-134000 -->
+<!-- build 20260917-140500 -->
 </html>
