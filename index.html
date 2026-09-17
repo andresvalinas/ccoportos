@@ -149,6 +149,97 @@ a .big .big-t{color:var(--texto)} a .big:hover{box-shadow:0 4px 14px rgba(0,42,1
   </div>
 </div>
 
+<script type="text/plain" id="css-rmr">
+:root{--navy:#002A9A;--green:#00A843;--orange:#F47920;--ink:#1a2332;--grey:#6b7688;--line:#e4e8f0;--bg:#f4f6fa;--red:#d63131}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Open Sans',sans-serif;background:#20242e;color:var(--ink);overflow:hidden}
+h1,h2,h3,.mont{font-family:'Montserrat',sans-serif}
+.deck{position:relative;width:100vw;height:calc(100vh - 44px)}
+.slide{position:absolute;inset:0;display:none;flex-direction:column;background:#fff}
+.slide.active{display:flex}
+.gtabs{height:44px;display:flex;align-items:center;gap:6px;padding:0 16px;background:#141824}
+.gtabs button{border:none;background:transparent;color:#9aa7c4;font-family:'Montserrat';font-size:12px;font-weight:700;padding:7px 14px;border-radius:16px;cursor:pointer;letter-spacing:.5px}
+.gtabs button.ativo{background:var(--navy);color:#fff}
+.gtabs button:hover{color:#fff}
+.tricolor{height:8px;display:flex;flex:none}
+.tricolor span:nth-child(1){flex:3;background:var(--navy)}
+.tricolor span:nth-child(2){flex:1;background:var(--green)}
+.tricolor span:nth-child(3){flex:1;background:var(--orange)}
+.head{flex:none;padding:26px 56px 14px;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--line)}
+.head h2{font-size:26px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.5px}
+.head .sub{font-size:13px;color:var(--grey);margin-top:4px}
+.head .tag{font-family:'Montserrat';font-size:12px;font-weight:700;color:#fff;background:var(--navy);padding:6px 14px;border-radius:20px;letter-spacing:1px}
+.body{flex:1;padding:20px 56px 16px;overflow-y:auto;overflow-x:hidden;background:var(--bg)}
+.foot{flex:none;padding:10px 56px;display:flex;justify-content:space-between;font-size:11px;color:var(--grey);border-top:1px solid var(--line);background:#fff}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:20px}
+.kpi{background:#fff;border-radius:12px;padding:18px 22px;border-left:5px solid var(--navy);box-shadow:0 2px 8px rgba(0,42,154,.07)}
+.kpi.g{border-left-color:var(--green)}.kpi.o{border-left-color:var(--orange)}.kpi.r{border-left-color:var(--red)}
+.kpi .lbl{font-size:11px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.8px}
+.kpi .val{font-family:'Montserrat';font-size:30px;font-weight:800;color:var(--navy);margin-top:4px}
+.kpi.g .val{color:var(--green)}.kpi.r .val{color:var(--red)}
+.kpi .cmp{font-size:12px;color:var(--grey);margin-top:2px}
+.up{color:var(--green);font-weight:700}.dn{color:var(--red);font-weight:700}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,42,154,.07)}
+th{background:var(--navy);color:#fff;font-family:'Montserrat';font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:11px 16px;text-align:right}
+th:first-child{text-align:left}
+td{padding:9px 16px;font-size:13.5px;text-align:right;border-bottom:1px solid var(--line)}
+td:first-child{text-align:left;font-weight:600}
+tr.total td{background:#eef2fb;font-weight:700;font-size:14.5px;border-top:2px solid var(--navy)}
+tr.sub td{color:var(--grey);font-size:12.5px}
+tr.sub td:first-child{padding-left:32px;font-weight:400}
+table.mini th{padding:7px 10px;font-size:10.5px;text-align:center}
+table.mini th:first-child{text-align:left}
+table.mini td{padding:5px 10px;font-size:12.5px;text-align:center}
+table.mini td:first-child{text-align:left;font-size:11.5px;color:var(--grey)}
+.pair{margin:6px 0;padding-bottom:6px;border-bottom:1px dashed var(--line)}
+.pair:last-child{border-bottom:none}
+.pair .pn{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.chip{font-family:'Montserrat';font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:10px}
+.chip.up{background:#e2f5ea;color:var(--green)}.chip.dn2{background:#fdeaea;color:var(--red)}.chip.ph{background:#fff3e6;color:var(--orange)}
+.ptrack{height:14px;background:#eef1f7;border-radius:3px;margin:2px 0}
+.pbar{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;font-size:10.5px;font-weight:700;color:#fff;min-width:44px}
+.pbar.pr{background:var(--navy)}.pbar.po{background:#b8c0d0;color:#4b556b}
+.hb{display:flex;align-items:center;gap:10px;margin:5px 0}
+.hb .n{width:210px;font-size:12px;font-weight:600;text-align:right;flex:none}
+.hb .track{flex:1;height:19px;background:#e9edf5;border-radius:4px;position:relative}
+.hb .bar{height:100%;border-radius:4px;background:var(--navy);display:flex;align-items:center;justify-content:flex-end;padding-right:8px;color:#fff;font-size:11px;font-weight:700;min-width:36px}
+.hb.gg .bar{background:var(--green)}.hb.oo .bar{background:var(--orange)}.hb.rr .bar{background:var(--red)}
+.cols{display:flex;align-items:flex-end;gap:26px;height:250px;padding:0 10px}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
+.col .stack{width:70%;flex:none;display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden}
+.col .seg1{background:var(--navy)}.col .seg2{background:var(--orange)}
+.col .v{font-family:'Montserrat';font-size:13px;font-weight:800;color:var(--navy);margin-bottom:6px}
+.col .m{font-size:12px;color:var(--grey);margin-top:8px;font-weight:600;text-transform:uppercase;height:16px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid32{display:grid;grid-template-columns:3fr 2fr;gap:20px}
+.card{background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 2px 8px rgba(0,42,154,.07)}
+.card h3{font-size:14px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--green)}
+.note{background:#fff8f0;border-left:4px solid var(--orange);border-radius:0 8px 8px 0;padding:12px 16px;font-size:13px;margin-top:14px}
+.note b{color:var(--navy)}
+.notegreen{background:#f0faf4;border-left-color:var(--green)}
+ul.pts{list-style:none}
+ul.pts li{padding:6px 0 6px 26px;position:relative;font-size:13.5px;border-bottom:1px dashed var(--line)}
+ul.pts li:last-child{border:none}
+ul.pts li::before{content:'';position:absolute;left:2px;top:14px;width:9px;height:9px;border-radius:50%;background:var(--green)}
+ul.pts li.warn::before{background:var(--orange)}
+ul.pts li.crit::before{background:var(--red)}
+.cover{background:linear-gradient(135deg,var(--navy) 0%,#001a63 100%);color:#fff;justify-content:center}
+.cover .body{background:transparent;display:flex;flex-direction:column;justify-content:center;padding-left:90px}
+.cover .eyebrow{font-family:'Montserrat';font-size:15px;font-weight:700;letter-spacing:4px;color:var(--orange);text-transform:uppercase;margin-bottom:18px}
+.cover h1{font-size:56px;font-weight:900;line-height:1.08;max-width:900px}
+.cover h1 em{font-style:normal;color:var(--green)}
+.cover .info{margin-top:34px;font-size:16px;opacity:.85;line-height:1.9}
+.cover .stripe{position:absolute;right:0;top:0;bottom:0;width:14px;display:flex;flex-direction:column}
+.cover .stripe span{flex:1}
+.cover .stripe span:nth-child(1){background:var(--navy)}
+.cover .stripe span:nth-child(2){background:var(--green)}
+.cover .stripe span:nth-child(3){background:var(--orange)}
+.nav{position:fixed;bottom:16px;right:20px;display:flex;gap:8px;z-index:50}
+.nav button{width:40px;height:40px;border:none;border-radius:50%;background:var(--navy);color:#fff;font-size:18px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.nav button:hover{background:var(--green)}
+.pgnum{position:fixed;bottom:26px;left:24px;font-family:'Montserrat';font-size:12px;font-weight:700;color:#fff;background:rgba(0,42,154,.85);padding:5px 14px;border-radius:14px;z-index:50}
+</script>
+
 <script>
 const SB_URL = "https://rzrzkgehpxtyqxvxhrzz.supabase.co/rest/v1";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6cnprZ2VocHh0eXF4dnhocnp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MTc0ODQsImV4cCI6MjA5Nzk5MzQ4NH0.MewX-WP_uc6J7XsmTfy7IMd3pShj7_UklEdJj0ZoGPI";
@@ -186,6 +277,8 @@ let prioTop = "1";  // prioridade do quadro de mais antigas (1=Urgente)
 let opTri = "";     // operação do desempenho por trimestre
 let pessPer = "ano"; // período da aba Pessoas: ano | mes
 let npsOrd = "prio"; // ordem da tabela de NPS: prio | nota_asc | nota_desc | alfa
+let rmrMes = null;   // mês selecionado na aba RMR
+let rmrGer = "BU";   // escopo da RMR: BU (completa) ou um gerente
 let fatPer = "vida"; // período do faturamento: vida | mes
 const prioSel = {}; // filtro de prioridade por quadro
 
@@ -1877,6 +1970,363 @@ function abaLinks(){
     `</div></section>`).join("") + sinaleiraRobos();
 }
 
+
+/* ================= RMR — Relatório Mensal de Resultados ================= */
+const MESES_LONGOS = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const mesLongo = am => MESES_LONGOS[+String(am).slice(4)] + "/" + String(am).slice(0,4);
+
+function rmrMesesDisponiveis(){
+  return [...new Set(D.dre.map(r=>r.anomes))].sort();
+}
+
+function rmrFmtMil(v){ return v==null? "—" : Math.round(v/1e3).toLocaleString("pt-BR"); }
+function rmrDelta(real, orc){
+  const d = (real||0)-(orc||0);
+  const p = orc? Math.round(1000*d/Math.abs(orc))/10 : null;
+  const cls = d>=0? "up":"dn";
+  const sinal = d>=0? "+":"−";
+  return {d, p, cls,
+    txtV: `<td class="${cls}">${sinal}${rmrFmtMil(Math.abs(d))}</td>`,
+    txtP: `<td class="${cls}">${p==null?"—":(sinal+Math.abs(p).toLocaleString("pt-BR")+"%")}</td>`};
+}
+function rmrChip(real, orc){
+  if(!orc) return '<span class="chip ph">não orçado</span>';
+  const p = Math.round(1000*((real||0)-orc)/Math.abs(orc))/10;
+  return `<span class="chip ${p>=0?"up":"dn2"}">${p>=0?"+":"−"}${Math.abs(p).toLocaleString("pt-BR")}%</span>`;
+}
+
+function rmrSlideResultado(G, am){
+  const rows = D.dre.filter(r=>r.gerente===G && r.anomes===am);
+  const porDre = {};
+  rows.forEach(r=>{
+    (porDre[r.dre] ||= {real:0, orc:0, subs:{}});
+    porDre[r.dre].real += +r.realizado; porDre[r.dre].orc += +r.orcado;
+    const s = r.sub || "Outros";
+    (porDre[r.dre].subs[s] ||= {real:0, orc:0});
+    porDre[r.dre].subs[s].real += +r.realizado; porDre[r.dre].subs[s].orc += +r.orcado;
+  });
+  const dres = Object.keys(porDre).sort();
+  let tot = {real:0, orc:0};
+  dres.forEach(d=>{ if(/^[1-5]\./.test(d)){ tot.real+=porDre[d].real; tot.orc+=porDre[d].orc; } });
+  const rec = porDre[dres.find(d=>/^1\./.test(d))] || {real:0,orc:0};
+  const margem = rec.real? Math.round(1000*tot.real/rec.real)/10 : null;
+  const margemO = rec.orc? Math.round(1000*tot.orc/rec.orc)/10 : null;
+  const custoM = +((D.custos.find(c=>c.anomes===am && c.gerente===G)||{}).custo||0);
+  const orcM = +((D.orcManut.find(c=>c.anomes===am && c.gerente===G)||{}).orcado_manut||0);
+  const fatG = D.fat.filter(f=>f.gerente===G && +f.pendente>0).sort((a,b)=>+b.pendente-+a.pendente);
+  const fatTot = fatG.reduce((s,f)=>s+ +f.pendente,0);
+  const dT = rmrDelta(tot.real, tot.orc), dR = rmrDelta(rec.real, rec.orc);
+  const linhas = dres.map(dre=>{
+    const n = porDre[dre]; const del = rmrDelta(n.real, n.orc);
+    const abrir = /COGS/i.test(dre) || /^3\./.test(dre);   // só o COGS abre em sublinhas
+    const subs = !abrir ? [] : Object.entries(n.subs)
+      .filter(([s,v])=>s!=="Outros" && (Math.abs(v.real)>500 || Math.abs(v.orc)>500))
+      .sort((a,b)=>Math.abs(b[1].real)-Math.abs(a[1].real)).slice(0,4);
+    return `<tr><td>${esc(dre)}</td><td>${rmrFmtMil(n.real)}</td><td>${rmrFmtMil(n.orc)}</td>${del.txtV}${del.txtP}</tr>` +
+      (subs.length>1? subs.map(([s,v])=>{ const ds=rmrDelta(v.real,v.orc);
+        return `<tr class="sub"><td>${esc(s)}</td><td>${rmrFmtMil(v.real)}</td><td>${rmrFmtMil(v.orc)}</td>${ds.txtV}${ds.txtP}</tr>`;}).join("") : "");
+  }).join("");
+  return `<section class="slide" data-g="${esc(G)}">
+  <div class="tricolor"><span></span><span></span><span></span></div>
+  <div class="head"><div><h2>Resultado do Mês — ${esc(nomeCompleto(G))}</h2>
+    <div class="sub">${mesLongo(am)} · Real x Orçado · valores em R$ mil · razão contábil por gerente</div></div>
+    <div class="tag">RESULTADO</div></div>
+  <div class="body">
+    <div class="kpis">
+      <div class="kpi ${dR.d>=0?"g":"r"}"><div class="lbl">Receita Bruta</div><div class="val">R$ ${rmrFmtMil(rec.real)}</div>
+        <div class="cmp">Orçado: R$ ${rmrFmtMil(rec.orc)} · <span class="${dR.cls}">${dR.p==null?"—":(dR.d>=0?"+":"−")+Math.abs(dR.p).toLocaleString("pt-BR")+"%"}</span></div></div>
+      <div class="kpi ${dT.d>=0?"g":"r"}"><div class="lbl">Resultado (1–5)</div><div class="val">R$ ${rmrFmtMil(tot.real)}</div>
+        <div class="cmp">Orçado: R$ ${rmrFmtMil(tot.orc)} · <span class="${dT.cls}">${dT.p==null?"—":(dT.d>=0?"+":"−")+Math.abs(dT.p).toLocaleString("pt-BR")+"%"}</span></div></div>
+      <div class="kpi ${fatTot>5e6?"r":fatTot>0?"o":"g"}"><div class="lbl">Backlog de Faturamento</div>
+        <div class="val">R$ ${rmrFmtMil(fatTot)}</div>
+        <div class="cmp">${fatG.length? fatG.length+" projeto(s) com valor em aberto · R$ mil" : "sem pendências"}</div></div>
+      <div class="kpi ${custoM<=orcM||!orcM?"g":"o"}"><div class="lbl">Custo Manutenção — OS aprovadas</div><div class="val">R$ ${rmrFmtMil(custoM)}</div>
+        <div class="cmp">BI Custos · aprovação no mês${orcM? " · Orçado (base orçament.): R$ "+rmrFmtMil(orcM) : ""}</div></div>
+    </div>
+    <table><tr><th>Linha</th><th>Real</th><th>Orçado</th><th>Δ (R$ mil)</th><th>Δ %</th></tr>
+      ${linhas}
+      <tr class="total"><td>Resultado (1–5)</td><td>${rmrFmtMil(tot.real)}</td><td>${rmrFmtMil(tot.orc)}</td>${dT.txtV}${dT.txtP}</tr>
+    </table>
+    ${fatG.length? `<div class="card" style="margin-top:16px"><h3>Faturamentos — pendências por projeto (R$ mil)</h3>
+      <table class="mini"><tr><th>Projeto</th><th>Pendente</th></tr>`+
+      fatG.slice(0,8).map(f=>`<tr><td>${esc(f.cliente||f.nome_cl||f.contrato)}</td>
+        <td style="color:var(--red);font-weight:700">${rmrFmtMil(+f.pendente)}</td></tr>`).join("")+
+      `<tr class="total"><td>Total pendente</td><td>${rmrFmtMil(fatTot)}</td></tr></table></div>` : ""}
+    <div class="note" style="margin-top:14px"><b>Fontes:</b> Receita, Resultado e tabela DRE = <b>razão contábil por gerente</b> (#3 Razão Completo, competência); Custo Manutenção (KPI) = <b>BI Custos de Manutenção</b>, OS somadas pela data de aprovação — pode diferir da linha contábil da tabela por timing aprovação × competência; Orçados = <b>base orçamentária</b> (#7 RxO); Backlog = <b>BI Faturamento por Projetos</b> (posição da última coleta).</div>
+  </div>
+  <div class="foot"><span>ARMAC · BU Portos, Terminais e Fertilizantes · ${esc(nomeCompleto(G))}</span><span>RMR ${mesLongo(am)} · Confidencial</span></div>
+</section>`;
+}
+
+function rmrPar(nome, real, orc, maxV){
+  const wr = maxV? Math.max(4, 100*Math.abs(real)/maxV) : 0;
+  const wo = maxV? Math.max(4, 100*Math.abs(orc)/maxV) : 0;
+  return `<div class="pair"><div class="pn">${esc(nome)}${rmrChip(real, orc)}</div>
+    <div class="ptrack"><div class="pbar pr" style="width:${wr.toFixed(1)}%">${rmrFmtMil(real)}</div></div>
+    <div class="ptrack"><div class="pbar po" style="width:${wo.toFixed(1)}%">${orc? rmrFmtMil(orc):"—"}</div></div></div>`;
+}
+
+const RMR_EXCLUI = { "ANDRÉS": ["MOS1GO0901"] };  // CMCI: CL no de-para mas fora da gestão
+const RMR_EXCLUI_LOCAL = ["BELOHORIZONTE"];        // locais do RH fora da RMR (comparação por texto normalizado)
+function rmrLocalOk(local){ const k = D.normOp(local||""); return !RMR_EXCLUI_LOCAL.some(x=>k.includes(x)); }
+function rmrExclui(G, cl){ return (RMR_EXCLUI[G]||[]).includes(String(cl||"").trim()); }
+function rmrNomeOp(nc){
+  const n = String(nc||"—");
+  if(/YARA/i.test(n) && (/CUBAT/i.test(n) || /CUB\s*\d/i.test(n) || /GESSO/i.test(n))) return "YARA CUB — Cubatão";
+  return n;
+}
+function rmrSlideOperacoes(G, am){
+  // consolida por operação (Yara Cubatão aglomerada) e ordena tudo por resultado desc
+  const agg = {};
+  D.rxoOp.filter(r=>r.gerente===G && r.anomes===am && !rmrExclui(G, r.cl)).forEach(r=>{
+    const k = rmrNomeOp(r.nome_cl);
+    (agg[k] ||= {nome:k, rxR:0, rxO:0, rsR:0, rsO:0});
+    agg[k].rxR += +r.realizado||0; agg[k].rxO += +r.orcado||0;
+  });
+  D.resOp.filter(r=>r.gerente===G && r.anomes===am && !rmrExclui(G, r.cl)).forEach(r=>{
+    const k = rmrNomeOp(r.nome_cl);
+    (agg[k] ||= {nome:k, rxR:0, rxO:0, rsR:0, rsO:0});
+    agg[k].rsR += +r.res_real||0; agg[k].rsO += +r.res_orc||0;
+  });
+  const ops = Object.values(agg)
+    .filter(o=>Math.abs(o.rxR)>1000||Math.abs(o.rxO)>1000||Math.abs(o.rsR)>1000||Math.abs(o.rsO)>1000)
+    .sort((a,b)=>b.rsR-a.rsR).slice(0,10);                    // maior resultado -> menor
+  const rx = ops.map(o=>({nome_cl:o.nome, realizado:o.rxR, orcado:o.rxO}));
+  const rs = ops.map(o=>({nome_cl:o.nome, res_real:o.rsR, res_orc:o.rsO}));
+  const rotOp = nc => nc||"—";
+  const maxRx = Math.max(1, ...rx.map(r=>Math.abs(+r.realizado)), ...rx.map(r=>Math.abs(+r.orcado)));
+  const maxRs = Math.max(1, ...rs.map(r=>Math.abs(+r.res_real)), ...rs.map(r=>Math.abs(+r.res_orc)));
+  const melhor = rs.filter(r=>+r.res_orc).map(r=>({n:rotOp(r.nome_cl), p:100*(+r.res_real-+r.res_orc)/Math.abs(+r.res_orc)})).sort((a,b)=>b.p-a.p);
+  const nota = melhor.length? `<b>Leitura automática:</b> melhor entrega vs orçado: <b>${esc(melhor[0].n)}</b> (${melhor[0].p>=0?"+":"−"}${Math.abs(Math.round(melhor[0].p*10)/10).toLocaleString("pt-BR")}%)`+
+    (melhor.length>1? ` · maior desvio negativo: <b>${esc(melhor[melhor.length-1].n)}</b> (${melhor[melhor.length-1].p>=0?"+":"−"}${Math.abs(Math.round(melhor[melhor.length-1].p*10)/10).toLocaleString("pt-BR")}%)` : "") : "";
+  return `<section class="slide" data-g="${esc(G)}">
+  <div class="tricolor"><span></span><span></span><span></span></div>
+  <div class="head"><div><h2>Operações — Real x Orçado</h2>
+    <div class="sub">${mesLongo(am)} · R$ mil · ordem: maior resultado → menor · Yara CUB = unidades de Cubatão consolidadas · <span style="color:var(--navy);font-weight:700">■ Real</span> &nbsp;<span style="color:#b8c0d0;font-weight:700">■ Orçado</span></div></div>
+    <div class="tag">RESULTADO</div></div>
+  <div class="body">
+    <div class="grid2">
+      <div class="card"><h3>Receita por operação</h3>${rx.map(r=>rmrPar(rotOp(r.nome_cl), +r.realizado, +r.orcado, maxRx)).join("") || '<div class="note">Sem dados de receita por operação no mês.</div>'}</div>
+      <div class="card"><h3>Resultado por operação</h3>${rs.map(r=>rmrPar(rotOp(r.nome_cl), +r.res_real, +r.res_orc, maxRs)).join("") || '<div class="note">Sem dados de resultado por operação no mês.</div>'}</div>
+    </div>
+    ${nota? `<div class="note notegreen" style="margin-top:14px">${nota}</div>` : ""}
+  </div>
+  <div class="foot"><span>ARMAC · BU Portos, Terminais e Fertilizantes · ${esc(nomeCompleto(G))}</span><span>RMR ${mesLongo(am)} · Confidencial</span></div>
+</section>`;
+}
+
+function rmrCols(serie, am, fmt){
+  const maxV = Math.max(1, ...serie.map(s=>Math.abs(s.v)));
+  return `<div class="cols" style="height:185px">` + serie.map(s=>{
+    const hpct = Math.max(4, 100*Math.abs(s.v)/maxV);
+    const atual = s.am===am;
+    return `<div class="col"><div class="v" style="flex:none;height:18px;line-height:18px;${atual?'color:var(--green)':''}">${fmt(s.v)}</div>
+      <div style="flex:1;width:100%;min-height:0;display:flex;align-items:flex-end;justify-content:center">
+        <div class="stack" style="height:${hpct.toFixed(0)}%"><div class="seg1" style="height:100%${atual?';background:var(--green)':''}"></div></div></div>
+      <div class="m" style="flex:none;height:16px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${nomeMes(s.am).split("/")[0]}</div></div>`;
+  }).join("") + `</div>`;
+}
+
+function rmrSlideEvolucao(G, am){
+  const ano = String(am).slice(0,4);
+  const meses = D.mesesAno.filter(m=>String(m).slice(0,4)===ano &&
+    D.rxo.some(r=>r.gerente===G && String(r.anomes)===String(m) && Math.abs(+r.realizado||0)>1000)).map(String).sort();
+  const rec = meses.map(m=>({am:m, v:+((D.rxo.find(r=>r.gerente===G&&String(r.anomes)===m)||{}).realizado||0)/1e6}));
+  const res = meses.map(m=>({am:m, v:+((D.res.find(r=>r.gerente===G&&String(r.anomes)===m)||{}).resultado_real||0)/1e6}));
+  const fmtMiC = v => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1});
+  const melhorRes = [...res].sort((a,b)=>b.v-a.v)[0];
+  const nota = melhorRes? `<b>Leitura automática:</b> melhor resultado do ano até aqui: <b>${nomeMes(melhorRes.am)}</b> (R$ ${fmtMiC(melhorRes.v)} Mi)` + (melhorRes.am===am? " — exatamente o mês desta RMR." : ".") : "";
+  return `<section class="slide" data-g="${esc(G)}">
+  <div class="tricolor"><span></span><span></span><span></span></div>
+  <div class="head"><div><h2>Evolução Mini BU — ${ano}</h2><div class="sub">Meses fechados de ${ano} (mês corrente fora) · valores realizados · R$ Mi · mês da RMR em verde</div></div>
+    <div class="tag">COCKPIT</div></div>
+  <div class="body">
+    <div class="grid2">
+      <div class="card"><h3>Receita Bruta — mensal (R$ Mi)</h3>${rmrCols(rec, am, fmtMiC)}</div>
+      <div class="card"><h3>Resultado — mensal (R$ Mi)</h3>${rmrCols(res, am, fmtMiC)}</div>
+    </div>
+    ${nota? `<div class="note notegreen" style="margin-top:14px">${nota}</div>` : ""}
+  </div>
+  <div class="foot"><span>ARMAC · BU Portos, Terminais e Fertilizantes · ${esc(nomeCompleto(G))}</span><span>RMR ${mesLongo(am)} · Confidencial</span></div>
+</section>`;
+}
+
+function rmrSlidePessoasNps(G, am){
+  const baseAbs = D.rhAbsMes.length? D.rhAbsMes : D.rhAbs;      // sempre o mês vigente (fallback: acumulado)
+  const absPer = D.rhAbsMes.length? "mês corrente" : "acumulado";
+  const abs = baseAbs.filter(r=>D.gerDe(r.local)===G && rmrLocalOk(r.local)).sort((a,b)=>+b.pct_abs-+a.pct_abs).slice(0,7);
+  const epiG = D.epi.filter(e=>e.gerente===G);
+  const epiAt = epiG.reduce((s,e)=>s+ +e.funcionarios_ativos,0);
+  const epiAtr = epiG.reduce((s,e)=>s+ +e.funcionarios_com_atraso,0);
+  const epiOk = epiAt? Math.round(1000*(epiAt-epiAtr)/epiAt)/10 : null;
+  const ng = (D.nps||[]).filter(n=>n.gerente===G);
+  const notaMax = n => { const v=(n.notas||"").split(",").map(s=>parseFloat(s)).filter(x=>!isNaN(x)); return v.length? Math.max(...v) : null; };
+  ng.sort((a,b)=>{ const na=notaMax(a), nb=notaMax(b);
+    if(na==null && nb==null) return String(a.cliente).localeCompare(String(b.cliente));
+    if(na==null) return 1; if(nb==null) return -1;
+    return nb-na || String(a.cliente).localeCompare(String(b.cliente)); });
+  const npsMes = ng.length? ng[0].mes : null;
+  const t = ng.reduce((a,n)=>({r:a.r+ +n.respondidas,p:a.p+ +n.promotores,d:a.d+ +n.detratores}),{r:0,p:0,d:0});
+  const npsV = t.r? Math.round(1000*(t.p-t.d)/t.r)/10 : null;
+  const baseTov = D.rhDeslMes.length? D.rhDeslMes : D.rhDesl;   // sempre o mês vigente (fallback: acumulado)
+  const tovPer = D.rhDeslMes.length? "mês corrente" : "acumulado";
+  const tov = baseTov.map(r=>({...r, g:D.gerDe(r.local)})).filter(r=>r.g===G);
+  const desl = tov.reduce((s,r)=>s+(+r.desligamentos||0),0);
+  const vol = tov.reduce((s,r)=>s+(+r.voluntarios||0),0);
+  const inv = tov.reduce((s,r)=>s+(+r.involuntarios||0),0);
+  const tovVals = tov.map(r=>+r.turnover_acum).filter(v=>!isNaN(v)&&v>0);
+  const tovMed = tovVals.length? Math.round(10*tovVals.reduce((a,b)=>a+b,0)/tovVals.length)/10 : null;
+  const cor = n => +n.respondidas===0? "var(--grey)" : +n.detratores>0? "var(--red)" : (+n.promotores>0? "var(--green)" : "var(--orange)");
+  const rot = n => +n.respondidas===0? "Sem resposta" : +n.detratores>0? "Detrator" : (+n.promotores>0? "Promotor" : "Neutro");
+  return `<section class="slide" data-g="${esc(G)}">
+  <div class="tricolor"><span></span><span></span><span></span></div>
+  <div class="head"><div><h2>Pessoas · NPS</h2><div class="sub">Absenteísmo e turnover por local (acumulado) · NPS ${npsMes? "("+esc(npsMes)+")":""}</div></div>
+    <div class="tag">GESTÃO</div></div>
+  <div class="body">
+    <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi ${npsV==null?"":npsV>=50?"g":npsV>=0?"o":"r"}"><div class="lbl">NPS${npsMes? " · "+esc(npsMes):""}</div>
+        <div class="val">${npsV==null?"—":npsV.toLocaleString("pt-BR")}</div>
+        <div class="cmp">${t.r? t.p+" promotores · "+t.d+" detratores ("+t.r+" respostas)" : "sem respostas no período"}</div></div>
+      <div class="kpi ${tovMed==null?"":tovMed<=21?"g":tovMed<=28?"o":"r"}"><div class="lbl">Turnover — ${tovPer}</div>
+        <div class="val">${tovMed==null?"—":tovMed.toLocaleString("pt-BR")+"%"}</div>
+        <div class="cmp">${desl? desl+" desligamentos · "+vol+" voluntários · "+inv+" involuntários" : "sem desligamentos no período"}</div></div>
+      <div class="kpi ${epiOk==null?"":epiOk>=80?"g":epiOk>=60?"o":"r"}"><div class="lbl">EPI em dia</div>
+        <div class="val">${epiOk==null?"—":epiOk.toLocaleString("pt-BR")+"%"}</div>
+        <div class="cmp">${epiAt? epiAtr+" de "+epiAt+" funcionários com atraso · MOB Controle (dado do dia)" : "sem dados de EPI"}</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Absenteísmo por local — % (${absPer})</h3>
+        ${abs.length? (()=>{ const maxA = Math.max(1, ...abs.map(r=>+r.pct_abs));
+          return `<div class="cols" style="height:185px">` + abs.map(r=>{
+            const hpct = Math.max(8, 100*(+r.pct_abs)/maxA);
+            const cor = +r.pct_abs>6? "var(--red)" : +r.pct_abs>4.6? "var(--orange)" : "var(--navy)";
+            const sp = splitOpEPI(r.local||"—");
+            const rot = [sp.op, sp.cid].filter(x=>x && x!=="—").join(" ").slice(0,16) || "—";
+            return `<div class="col"><div class="v" style="flex:none;height:18px;line-height:18px;color:${cor}">${(+r.pct_abs).toLocaleString("pt-BR",{maximumFractionDigits:1})}%</div>
+              <div style="flex:1;width:100%;min-height:0;display:flex;align-items:flex-end;justify-content:center">
+                <div class="stack" style="height:${hpct.toFixed(0)}%"><div class="seg1" style="height:100%;background:${cor}"></div></div></div>
+              <div class="m" style="flex:none;font-size:9.5px;height:16px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${esc(rot)}</div></div>`;
+          }).join("") + `</div>`; })() : '<div class="note">Sem locais do RH mapeados para este gerente.</div>'}</div>
+      <div class="card"><h3>NPS por contrato ${npsMes? "· "+esc(npsMes):""}</h3>
+        ${ng.length? `<table class="mini"><tr><th>Contrato</th><th>Nota</th><th>Classificação</th></tr>`+
+          ng.slice(0,12).map(n=>`<tr><td>${esc(n.cliente)}</td><td>${esc(n.notas||"—")}</td>
+              <td style="color:${cor(n)};font-weight:700">${rot(n)}</td></tr>`).join("")+`</table>` : '<div class="note">Sem pesquisas de NPS no período coletado.</div>'}
+
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>ARMAC · BU Portos, Terminais e Fertilizantes · ${esc(nomeCompleto(G))}</span><span>RMR ${mesLongo(am)} · Confidencial</span></div>
+</section>`;
+}
+
+function rmrSlideSintese(am){
+  const linhas = GERENTES.map(G=>{
+    const rows = D.dre.filter(r=>r.gerente===G && r.anomes===am);
+    let tot={real:0,orc:0}, rec={real:0,orc:0};
+    const porDre={};
+    rows.forEach(r=>{ (porDre[r.dre] ||= {real:0,orc:0}); porDre[r.dre].real+=+r.realizado; porDre[r.dre].orc+=+r.orcado; });
+    Object.keys(porDre).forEach(d=>{ if(/^[1-5]\./.test(d)){ tot.real+=porDre[d].real; tot.orc+=porDre[d].orc; } if(/^1\./.test(d)){ rec=porDre[d]; } });
+    const p = tot.orc? Math.round(1000*tot.real/tot.orc)/10 : null;
+    const ng=(D.nps||[]).filter(n=>n.gerente===G);
+    const t=ng.reduce((a,n)=>({r:a.r+ +n.respondidas,p:a.p+ +n.promotores,d:a.d+ +n.detratores}),{r:0,p:0,d:0});
+    const nps = t.r? Math.round(1000*(t.p-t.d)/t.r)/10 : null;
+    return {G, rec:rec.real, res:tot.real, orc:tot.orc, p, nps};
+  }).sort((a,b)=>b.res-a.res);
+  return `<section class="slide" data-g="SINTESE">
+  <div class="tricolor"><span></span><span></span><span></span></div>
+  <div class="head"><div><h2>Síntese — Gerentes lado a lado</h2><div class="sub">${mesLongo(am)} · R$ mil · % = resultado vs orçado</div></div>
+    <div class="tag">SÍNTESE</div></div>
+  <div class="body">
+    <table><tr><th>Gerente</th><th>Receita</th><th>Resultado</th><th>Orçado</th><th>% Orç.</th><th>NPS</th></tr>
+      ${linhas.map(l=>`<tr><td>${esc(nomeCompleto(l.G))}</td><td>${rmrFmtMil(l.rec)}</td><td>${rmrFmtMil(l.res)}</td><td>${rmrFmtMil(l.orc)}</td>
+        <td class="${l.p>=100?"up":"dn"}">${l.p==null?"—":l.p.toLocaleString("pt-BR")+"%"}</td>
+        <td>${l.nps==null?"—":l.nps.toLocaleString("pt-BR")}</td></tr>`).join("")}
+      <tr class="total"><td>BU</td><td>${rmrFmtMil(linhas.reduce((s,l)=>s+l.rec,0))}</td><td>${rmrFmtMil(linhas.reduce((s,l)=>s+l.res,0))}</td>
+        <td>${rmrFmtMil(linhas.reduce((s,l)=>s+l.orc,0))}</td><td></td><td></td></tr>
+    </table>
+    <div class="note" style="margin-top:14px"><b>Nota:</b> soma dos gerentes pode diferir do oficial da BU (fonte #6 RxO) por linhas não alocadas e Desafio de Receita. Relatório gerado automaticamente pelo CCO Portos — números do razão por gerente.</div>
+  </div>
+  <div class="foot"><span>ARMAC · BU Portos, Terminais e Fertilizantes</span><span>RMR ${mesLongo(am)} · Confidencial</span></div>
+</section>`;
+}
+
+function rmrHTML(am, ger){
+  ger = ger || "BU";
+  const soUm = ger !== "BU";
+  const lista = soUm ? [ger] : GERENTES;
+  const gerados = new Date().toLocaleDateString("pt-BR") + " " + new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  const capa = `<section class="slide cover active" data-g="CAPA">
+  <div class="tricolor"><span></span><span></span><span></span></div>
+  <div class="body">
+    <div class="eyebrow">ARMAC · RMR — Reunião Mensal de Resultados</div>
+    <h1>BU Portos, Terminais<br>e Fertilizantes<br><em>${mesLongo(am).replace("/"," ")}</em></h1>
+    <div class="info">${soUm? nomeCompleto(ger)+" · Visão do gerente" : "Visão por gerente: "+GERENTES.map(g=>nomeCompleto(g)).join(" · ")}<br>
+    Gerado automaticamente pelo CCO Portos em ${gerados}</div>
+  </div>
+  <div class="stripe"><span></span><span></span><span></span></div>
+</section>`;
+  const slides = capa + lista.map(G=>
+    rmrSlideResultado(G, am) + rmrSlideOperacoes(G, am) + rmrSlideEvolucao(G, am) + rmrSlidePessoasNps(G, am)
+  ).join("") + (soUm? "" : rmrSlideSintese(am));
+  const tabs = soUm? ["CAPA", ger] : ["CAPA", ...GERENTES, "SINTESE"];
+  const tabHTML = tabs.map(t=>`<button data-g="${t}">${t==="CAPA"?"Capa":t==="SINTESE"?"Síntese":esc(nomeCompleto(t).split(" ")[0])}</button>`).join("");
+  const CSS_RMR = document.getElementById("css-rmr").textContent;
+  return "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+    "<title>RMR " + mesLongo(am) + " — BU Portos, Terminais e Fertilizantes</title>\n" +
+    "<link href=\"https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Open+Sans:wght@400;600;700&display=swap\" rel=\"stylesheet\">\n" +
+    "<style>" + CSS_RMR + "</style>\n</head>\n<body>\n<div class=\"gtabs\">" + tabHTML + "</div>\n<div class=\"deck\">" + slides + "</div>\n" +
+    "<div class=\"pgnum\" id=\"pg\">1</div>\n<div class=\"nav\"><button onclick=\"go(-1)\" aria-label=\"Anterior\">‹</button><button onclick=\"go(1)\" aria-label=\"Próximo\">›</button></div>\n" +
+    "<scr" + "ipt>\n" +
+    "const slides=[...document.querySelectorAll('.slide')];let i=0;\n" +
+    "function show(){slides.forEach((s,k)=>s.classList.toggle('active',k===i));\n" +
+    "  document.getElementById('pg').textContent=(i+1)+' / '+slides.length;\n" +
+    "  const g=slides[i].dataset.g;\n" +
+    "  document.querySelectorAll('.gtabs button').forEach(b=>b.classList.toggle('ativo', b.dataset.g===g));}\n" +
+    "function go(d){i=Math.min(Math.max(i+d,0),slides.length-1);show();}\n" +
+    "document.querySelectorAll('.gtabs button').forEach(b=>b.addEventListener('click',()=>{\n" +
+    "  const k=slides.findIndex(s=>s.dataset.g===b.dataset.g); if(k>=0){i=k;show();}}));\n" +
+    "document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')go(1);if(e.key==='ArrowLeft'||e.key==='PageUp')go(-1);});\n" +
+    "show();\n" +
+    "</scr" + "ipt>\n</body>\n</html>";
+}
+
+function baixarRMR(){
+  const am = rmrMes || rmrMesesDisponiveis().pop();
+  const html = rmrHTML(am, rmrGer);
+  const blob = new Blob([html], {type:"text/html;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  const sufixo = rmrGer==="BU" ? "Portos"
+    : nomeCompleto(rmrGer).split(" ")[0].normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  a.download = `RMR_${MESES_LONGOS[+String(am).slice(4)]}${String(am).slice(0,4)}_${sufixo}.html`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
+
+function abaRMR(){
+  const meses = rmrMesesDisponiveis();
+  if(!meses.length) return '<div class="aviso">Sem meses de DRE no banco ainda — a RMR nasce da expansão do razão por gerente.</div>';
+  if(!rmrMes || !meses.includes(rmrMes)) rmrMes = meses[meses.length-1];
+  return `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">RMR — Reunião Mensal de Resultados
+      <select class="mes" onchange="rmrMes=this.value;render(abaAtual)">
+        ${meses.map(m=>`<option value="${m}" ${m===rmrMes?"selected":""}>${mesLongo(m)}</option>`).join("")}
+      </select>
+      <select class="mes" onchange="rmrGer=this.value;render(abaAtual)">
+        <option value="BU" ${rmrGer==="BU"?"selected":""}>BU Portos (completa)</option>
+        ${GERENTES.map(g=>`<option value="${g}" ${g===rmrGer?"selected":""}>${nomeCompleto(g)}</option>`).join("")}
+      </select>
+      <button onclick="baixarRMR()" style="background:var(--royal);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-weight:800;font-size:13px;cursor:pointer;letter-spacing:.5px">⬇ GERAR RMR</button>
+    </h2>
+    <div class="nota">Deck no formato oficial da RMR, montado na hora com os dados do CCO. <b>BU Portos (completa)</b>: capa + 4 slides por gerente + síntese comparativa. <b>Gerente individual</b>: capa + os 4 slides dele, pronto pra ele apresentar. O botão baixa o arquivo HTML pronto para apresentar; a prévia abaixo é o documento real (navegue com ‹ › ou pelas abas de gerente).</div>
+    <div style="margin-top:14px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#20242e">
+      <iframe id="rmr-prev" style="width:100%;height:72vh;border:none;display:block"></iframe>
+    </div></section>`;
+}
+function initRMRPrev(){
+  const f = document.getElementById("rmr-prev");
+  if(f) f.srcdoc = rmrHTML(rmrMes || rmrMesesDisponiveis().pop(), rmrGer);
+}
+
 function render(aba){
   abaAtual = aba;
   document.querySelectorAll("aside button").forEach(b=>b.classList.toggle("ativo", b.dataset.aba===aba));
@@ -1884,8 +2334,10 @@ function render(aba){
     ? `CCO PORTOS / <b>VISÃO GERAL</b>`
     : aba==="Links"
     ? `CCO PORTOS / <b>LINKS ESTRATÉGICOS</b>`
+    : aba==="RMR"
+    ? `CCO PORTOS / <b>RMR</b>`
     : `CCO PORTOS / GERENTES / <b>${esc(nomeCompleto(aba).toUpperCase())}</b>${subAba!=="Resumo"?" / "+esc(subAba.toUpperCase()):""}`;
-  document.getElementById("titulo-pagina").textContent = aba==="Diretoria" ? "Diretoria" : aba==="Links" ? "Links Estratégicos" : nomeCompleto(aba);
+  document.getElementById("titulo-pagina").textContent = aba==="Diretoria" ? "Diretoria" : aba==="Links" ? "Links Estratégicos" : aba==="RMR" ? "RMR — Relatório Mensal" : nomeCompleto(aba);
   const sub = document.getElementById("subabas");
   const c = document.getElementById("conteudo");
   if(aba==="Diretoria"){
@@ -1895,6 +2347,10 @@ function render(aba){
   } else if(aba==="Links"){
     sub.style.display="none";
     c.innerHTML = abaLinks();
+  } else if(aba==="RMR"){
+    sub.style.display="none";
+    try { c.innerHTML = avisoColetores() + abaRMR(); setTimeout(initRMRPrev, 60); }
+    catch(e){ c.innerHTML = '<div class="aviso">⚠ Erro ao montar a RMR: '+esc(e.message)+' — me mande um print.</div>'; }
   } else {
     sub.style.display="flex";
     sub.innerHTML = SUBS.map(s=>`<button data-sub="${s}" class="${s===subAba?"ativo":""}">${s}</button>`).join("");
@@ -1932,6 +2388,7 @@ function render(aba){
     GERENTES.map(g=>`<button data-aba="${cap(g)}">${nomeCompleto(g)}</button>`).join("") +
     `<div class="rotulo-menu" style="margin-top:10px">Ferramentas</div>
     <button data-aba="Links">Links Estratégicos</button>
+    <button data-aba="RMR">RMR — Relatório Mensal</button>
     <div id="menu-rodape" style="margin-top:auto;padding:14px 10px 4px;text-align:center">
       <div id="menu-atualizacao" style="font-size:10.5px;font-weight:600;color:#8FA5DE;letter-spacing:.3px"></div>
       <div style="font-size:10.5px;font-weight:600;color:#5F7BC7;margin-top:4px;letter-spacing:.4px">Powered by ValinasTech - 2026</div>
@@ -1951,5 +2408,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260917-140500 -->
+<!-- build 20260917-203000 -->
 </html>
