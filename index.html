@@ -697,16 +697,18 @@ function npsSecaoGerente(G){
     return '<span style="color:var(--ambar);font-weight:700">Neutro</span>';
   };
   const linhas = ng.map(n=>{
-    const fb = n.fb_detrator ? `<div class="cel-sub" style="max-width:560px;white-space:normal" title="${esc(n.fb_detrator)}">&ldquo;${esc(n.fb_detrator.length>220? n.fb_detrator.slice(0,220)+"…" : n.fb_detrator)}&rdquo;</div>` : "";
+    const fbs = (n.feedbacks||"").split(" ||| ").map(s=>s.trim()).filter(Boolean);
+    const fb = fbs.length ? `<details style="margin-top:4px"><summary style="cursor:pointer;color:var(--royal);font-size:12px;font-weight:700;list-style:none">+ comentário${fbs.length>1?"s ("+fbs.length+")":""}</summary>${
+        fbs.map(f=>`<div class="cel-sub" style="max-width:560px;white-space:normal;margin-top:6px">&ldquo;${esc(f)}&rdquo;</div>`).join("")}</details>` : "";
     return `<tr><td><span class="cel-main">${esc(n.cliente||"—")}</span>${fb}</td>
       <td>${esc(n.centro_lucro)}</td>
-      <td class="dir">${n.respondidas} de ${n.pesquisas}</td>
+      <td class="dir">${n.notas!=null? esc(n.notas) : '<span style="color:var(--muted)">—</span>'}</td>
       <td>${rotulo(n)}</td></tr>`;
   }).join("");
   const mes = ng[0].mes || "";
   return `<section><h2>NPS por contrato${mes? " — "+esc(mes) : ""}</h2>
-    <div class="nota">Pesquisa oficial de NPS (relatório corporativo). Detratores no topo; feedback registrado aparece sob o contrato.</div>
-    <table><tr><th>Contrato</th><th>CL</th><th class="dir">Respostas</th><th>Classificação</th></tr>${linhas}</table></section>`;
+    <div class="nota">Pesquisa oficial de NPS (relatório corporativo). Detratores no topo; <b>+</b> abre o comentário do cliente.</div>
+    <table><tr><th>Contrato</th><th>CL</th><th class="dir">Nota</th><th>Classificação</th></tr>${linhas}</table></section>`;
 }
 
 /* ---------- Resumo executivo ---------- */
@@ -1933,5 +1935,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260917-131000 -->
+<!-- build 20260917-134000 -->
 </html>
