@@ -744,8 +744,6 @@ function gerResumo(G){
         v==null?"":v>=50?"ok":v>=0?"warn":"bad"); })()}
   </div>`;
 
-  h += npsSecaoGerente(G);
-
   // highlights automáticos
   const hls = [];
   hls.push(hl(corSem(M.pRes,98,85), `<b>Resultado ${nomeMes(M.m)}:</b> ${fmtMi(M.res.resultado_real)} — ${M.pRes??"—"}% do orçado, na régua oficial do RxO.`));
@@ -881,6 +879,7 @@ function gerResumo(G){
       </div>` : `<div class="nota">Aguardando a primeira coleta da fonte de faturamento.</div>`}
     </section>
   </div>`;
+  h += npsSecaoGerente(G);
   return h;
 }
 
@@ -1934,5 +1933,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260917-124500 -->
+<!-- build 20260917-131000 -->
 </html>
