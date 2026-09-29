@@ -1878,7 +1878,7 @@ function initMapaFrota(G){
 /* ================= navegação ================= */
 
 const ROBOS_OCULTOS = ["rxo_oficial","custos_anual","faturamento_mes"];
-const CADENCIA_DIAS = {rxo_resultado:8, rxo_equipamentos:8, razao_completo:8, base_orcamento:8};
+const CADENCIA_DIAS = {rxo_resultado:8, rxo_equipamentos:8, razao_completo:8, base_orcamento:180, custos_anual:180, orcamento_panorama:180};
 
 function statusRobo(s){
   if(s.sucesso === false) return "vermelho";
@@ -1929,7 +1929,7 @@ function sinaleiraRobos(){
       <span style="font-size:12px;font-weight:700"><span style="color:var(--verde)">● ${nv} em dia</span>
       ${na? ` · <span style="color:#D97706">● ${na} atenção</span>`:""}
       ${nr? ` · <span style="color:var(--verm)">● ${nr} parado</span>`:""}</span></h2>
-    <div class="nota">Farol respeita o plantão de cada robô: diários cobram 24h; os semanais (razão, orçamento, RxO) só acendem atenção após 8 dias.</div>
+    <div class="nota">Farol respeita o plantão de cada robô: diários cobram 24h; os semanais (razão, RxO) acendem atenção após 8 dias; os anuais (base orçamentária) só após ~6 meses.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;margin-top:10px">` +
     linhas.map(s=>{
       const [nome, hora] = NOMES[s.coletor] || [s.coletor, "—"];
@@ -2010,12 +2010,17 @@ function rmrSlideResultado(G, am){
   dres.forEach(d=>{ if(/^[1-5]\./.test(d)){ tot.real+=porDre[d].real; tot.orc+=porDre[d].orc; } });
   const rec = porDre[dres.find(d=>/^1\./.test(d))] || {real:0,orc:0};
   const margem = rec.real? Math.round(1000*tot.real/rec.real)/10 : null;
-  const margemO = rec.orc? Math.round(1000*tot.orc/rec.orc)/10 : null;
   const custoM = +((D.custos.find(c=>c.anomes===am && c.gerente===G)||{}).custo||0);
   const orcM = +((D.orcManut.find(c=>c.anomes===am && c.gerente===G)||{}).orcado_manut||0);
   const fatG = D.fat.filter(f=>f.gerente===G && +f.pendente>0).sort((a,b)=>+b.pendente-+a.pendente);
   const fatTot = fatG.reduce((s,f)=>s+ +f.pendente,0);
-  const dT = rmrDelta(tot.real, tot.orc), dR = rmrDelta(rec.real, rec.orc);
+  // ORÇADO OFICIAL (base orçamentária #7 — bate com o BI). O razão fica só na tabela detalhada.
+  const rxoG = D.rxo.find(r=>r.gerente===G && r.anomes===am);
+  const resG = D.res.find(r=>r.gerente===G && r.anomes===am);
+  const recOrcOf = rxoG ? +rxoG.orcado : rec.orc;                 // receita orçada oficial
+  const resOrcOf = resG ? +resG.resultado_orc : tot.orc;         // resultado orçado oficial
+  const margemO = recOrcOf? Math.round(1000*resOrcOf/recOrcOf)/10 : null;
+  const dT = rmrDelta(tot.real, resOrcOf), dR = rmrDelta(rec.real, recOrcOf);
   const linhas = dres.map(dre=>{
     const n = porDre[dre]; const del = rmrDelta(n.real, n.orc);
     const abrir = /COGS/i.test(dre) || /^3\./.test(dre);   // só o COGS abre em sublinhas
@@ -2034,9 +2039,9 @@ function rmrSlideResultado(G, am){
   <div class="body">
     <div class="kpis">
       <div class="kpi ${dR.d>=0?"g":"r"}"><div class="lbl">Receita Bruta</div><div class="val">R$ ${rmrFmtMil(rec.real)}</div>
-        <div class="cmp">Orçado: R$ ${rmrFmtMil(rec.orc)} · <span class="${dR.cls}">${dR.p==null?"—":(dR.d>=0?"+":"−")+Math.abs(dR.p).toLocaleString("pt-BR")+"%"}</span></div></div>
+        <div class="cmp">Orçado: R$ ${rmrFmtMil(recOrcOf)} · <span class="${dR.cls}">${dR.p==null?"—":(dR.d>=0?"+":"−")+Math.abs(dR.p).toLocaleString("pt-BR")+"%"}</span></div></div>
       <div class="kpi ${dT.d>=0?"g":"r"}"><div class="lbl">Resultado (1–5)</div><div class="val">R$ ${rmrFmtMil(tot.real)}</div>
-        <div class="cmp">Orçado: R$ ${rmrFmtMil(tot.orc)} · <span class="${dT.cls}">${dT.p==null?"—":(dT.d>=0?"+":"−")+Math.abs(dT.p).toLocaleString("pt-BR")+"%"}</span></div></div>
+        <div class="cmp">Orçado: R$ ${rmrFmtMil(resOrcOf)} · <span class="${dT.cls}">${dT.p==null?"—":(dT.d>=0?"+":"−")+Math.abs(dT.p).toLocaleString("pt-BR")+"%"}</span></div></div>
       <div class="kpi ${fatTot>5e6?"r":fatTot>0?"o":"g"}"><div class="lbl">Backlog de Faturamento</div>
         <div class="val">R$ ${rmrFmtMil(fatTot)}</div>
         <div class="cmp">${fatG.length? fatG.length+" projeto(s) com valor em aberto · R$ mil" : "sem pendências"}</div></div>
@@ -2045,14 +2050,15 @@ function rmrSlideResultado(G, am){
     </div>
     <table><tr><th>Linha</th><th>Real</th><th>Orçado</th><th>Δ (R$ mil)</th><th>Δ %</th></tr>
       ${linhas}
-      <tr class="total"><td>Resultado (1–5)</td><td>${rmrFmtMil(tot.real)}</td><td>${rmrFmtMil(tot.orc)}</td>${dT.txtV}${dT.txtP}</tr>
+      <tr class="total"><td>Resultado (1–5)</td><td>${rmrFmtMil(tot.real)}</td><td>${rmrFmtMil(resOrcOf)}</td>${dT.txtV}${dT.txtP}</tr>
     </table>
+    <div class="note notegreen" style="margin-top:10px;padding:8px 14px;font-size:12px"><b>Orçado:</b> o Resultado (1–5) e a Receita usam a <b>base orçamentária oficial (#7 RxO)</b>, que bate com o BI. As linhas da tabela acima trazem o orçado do <b>razão por competência</b>, que pode diferir do total oficial por alocação de linhas.</div>
     ${fatG.length? `<div class="card" style="margin-top:16px"><h3>Faturamentos — pendências por projeto (R$ mil)</h3>
       <table class="mini"><tr><th>Projeto</th><th>Pendente</th></tr>`+
       fatG.slice(0,8).map(f=>`<tr><td>${esc(f.cliente||f.nome_cl||f.contrato)}</td>
         <td style="color:var(--red);font-weight:700">${rmrFmtMil(+f.pendente)}</td></tr>`).join("")+
       `<tr class="total"><td>Total pendente</td><td>${rmrFmtMil(fatTot)}</td></tr></table></div>` : ""}
-    <div class="note" style="margin-top:14px"><b>Fontes:</b> Receita, Resultado e tabela DRE = <b>razão contábil por gerente</b> (#3 Razão Completo, competência); Custo Manutenção (KPI) = <b>BI Custos de Manutenção</b>, OS somadas pela data de aprovação — pode diferir da linha contábil da tabela por timing aprovação × competência; Orçados = <b>base orçamentária</b> (#7 RxO); Backlog = <b>BI Faturamento por Projetos</b> (posição da última coleta).</div>
+    <div class="note" style="margin-top:14px"><b>Fontes:</b> Receita, Resultado e tabela DRE = <b>razão contábil por gerente</b> (#3 Razão Completo, competência); Custo Manutenção (KPI) = <b>BI Custos de Manutenção</b>, OS somadas pela data de aprovação — pode diferir da linha contábil da tabela por timing aprovação × competência; Orçado dos KPIs e do total = <b>base orçamentária #7</b> (igual ao BI); Backlog = <b>BI Faturamento por Projetos</b> (posição da última coleta).</div>
   </div>
   <div class="foot"><span>ARMAC · BU Portos, Terminais e Fertilizantes · ${esc(nomeCompleto(G))}</span><span>RMR ${mesLongo(am)} · Confidencial</span></div>
 </section>`;
@@ -2408,5 +2414,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260917-203000 -->
+<!-- build 20260930-093000 -->
 </html>
