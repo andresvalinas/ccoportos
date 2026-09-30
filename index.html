@@ -303,7 +303,7 @@ async function pega(caminho){
 
 const tenta = pr => pr.catch(()=>[]);
 async function carregar(){
-  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu, homolGer, comprasOp, comprasForn, comprasDet] = await Promise.all([
+  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu, homolGer, comprasOp, comprasForn, comprasDet, servForn, servDet] = await Promise.all([
     pega("mv_cco_rxo_gerente?select=*"),
     pega("mv_cco_custos_gerente_mes?select=*"),
     pega("v_cco_epi_gerente?select=*"),
@@ -340,6 +340,8 @@ async function carregar(){
     tenta(pegaTudo("mv_cco_compras_operacao?select=*")),
     tenta(pegaTudo("mv_cco_compras_fornecedor?select=*")),
     tenta(pegaTudo("mv_cco_compras_detalhe?select=*")),
+    tenta(pegaTudo("mv_cco_servicos_fornecedor?select=*")),
+    tenta(pegaTudo("mv_cco_servicos_detalhe?select=*")),
   ]);
   const canon = g => { const u=(g||"").toUpperCase();
     if(u.includes("PEDRO AUGUSTO LEAL")) return "CÁSSIA";
@@ -350,7 +352,7 @@ async function carregar(){
     return null; };
   corr.forEach(o=>o.g=canon(o.gerente));
   prev.forEach(o=>o.g=canon(o.gerente));
-  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu,homolGer,comprasOp,comprasForn,comprasDet};
+  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu,homolGer,comprasOp,comprasForn,comprasDet,servForn,servDet};
   D.rhTot = (rhTot && rhTot[0]) || null;
   D.rhK = (rhKpis && rhKpis[0]) || null;
   const pctNorm = v => { v = +v||0; return v <= 1 ? v*100 : v; };
@@ -867,7 +869,7 @@ function gerCompras(G){
     ${big("Comprado fora", fmtMil(vf), fornFora+" fornecedor(es) não homologado(s)", vf>0?"bad":"ok")}
     ${big("Compra externa", fmtMil(vhomolgavel), fmtMil(vl)+" liberado · "+fmtMil(vnl)+" s/ liberação","")}
     ${big("Estoque interno", fmtMil(vest), "saída de estoque · sem fornecedor a homologar","")}
-    ${big("Total do período", fmtMil(vt), "concilia com o custo de manutenção","")}
+    ${big("Produtos (peças/mat.)", fmtMil(vt), "total de produtos · serviços em quadro à parte","")}
   </div>`;
 
   // quadro por operação
@@ -921,9 +923,36 @@ function gerCompras(G){
     ${naoLib.map(f=>`<tr><td>${esc(f.fornecedor||f.homologado_razao||"—")}</td><td>${fmtCnpj(f.cnpj)}</td>
       <td class="dir" style="color:var(--ambar);font-weight:700">${fmtMil(f.valor)}</td></tr>`).join("")}</table></section>` : "";
 
+  // TABELA DE SERVIÇOS (à parte — por enquanto não homologamos serviços)
+  const sForn = (D.servForn||[]).filter(r=>r.gcod===G);
+  const sDet  = (D.servDet||[]).filter(r=>r.gcod===G);
+  const aggS = {};
+  sForn.filter(passa).forEach(r=>{
+    (aggS[r.cnpj] ||= {cnpj:r.cnpj, fornecedor:r.fornecedor, valor:0, lancamentos:0});
+    aggS[r.cnpj].valor += +r.valor; aggS[r.cnpj].lancamentos += +r.lancamentos;
+  });
+  const servs = Object.values(aggS).sort((a,b)=>b.valor-a.valor);
+  const totalServ = servs.reduce((s,x)=>s+x.valor,0);
+  const detS = cnpj => sDet.filter(d=>d.cnpj===cnpj && passa(d)).sort((a,b)=>String(b.data_doc).localeCompare(String(a.data_doc)));
+  const tabServ = servs.length ? `<section><h2>Serviços de manutenção e reparo</h2>
+    <div class="nota">Contratação de <b>serviços</b> (mão de obra externa), separada das peças/materiais. Por enquanto não há homologação de serviços — total do período: <b>${fmtMil(totalServ)}</b>. Clique no nome para ver os serviços.</div>
+    <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th><th class="dir">Lançs.</th></tr>
+    ${servs.map((f,i)=>{ const det=detS(f.cnpj);
+      const linhasDet = det.map(d=>`<tr class="det-row"><td style="padding-left:26px" colspan="2">
+          <span class="cel-sub">${esc((d.data_doc||"").slice(0,10).split("-").reverse().join("/"))} · ${esc(d.operacao||"—")} · OS ${esc(d.os||"—")}</span><br>
+          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,60))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
+        <td class="dir">${fmtMil(+d.valor)}</td><td></td></tr>`).join("");
+      return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('sdet-${G}-${i}'); b.style.display = b.style.display==='none'?'table-row-group':'none';">
+          <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
+          <td>${fmtCnpj(f.cnpj)}</td>
+          <td class="dir" style="font-weight:700">${fmtMil(f.valor)}</td>
+          <td class="dir">${f.lancamentos}</td></tr>
+        <tbody id="sdet-${G}-${i}" style="display:none">${linhasDet}</tbody>`;
+    }).join("")}</table></section>` : "";
+
   return `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Compras — Homologação de fornecedores ${selSem}</h2>
-    <div class="nota">Cruzamento do custo de manutenção (por CNPJ) com a base de homologados. Total concilia com o custo; % calculado só sobre compras com fornecedor externo.</div>
-    ${cards}</section>${tabOp}${tabFora}${tabNaoLib}`;
+    <div class="nota">Peças e materiais cruzados (por CNPJ) com a base de homologados. Serviços aparecem em quadro à parte. % calculado só sobre produtos com fornecedor externo.</div>
+    ${cards}</section>${tabOp}${tabFora}${tabNaoLib}${tabServ}`;
 }
 
 /* ---------- Resumo executivo ---------- */
@@ -2521,5 +2550,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260930-161000 -->
+<!-- build 20260930-171000 -->
 </html>
