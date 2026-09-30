@@ -279,6 +279,7 @@ let pessPer = "ano"; // período da aba Pessoas: ano | mes
 let npsOrd = "prio"; // ordem da tabela de NPS: prio | nota_asc | nota_desc | alfa
 let rmrMes = null;   // mês selecionado na aba RMR
 let rmrGer = "BU";   // escopo da RMR: BU (completa) ou um gerente
+let compSem = "TODOS"; // filtro de semana da aba Compras
 let fatPer = "vida"; // período do faturamento: vida | mes
 const prioSel = {}; // filtro de prioridade por quadro
 
@@ -302,7 +303,7 @@ async function pega(caminho){
 
 const tenta = pr => pr.catch(()=>[]);
 async function carregar(){
-  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu, homolGer, comprasForn] = await Promise.all([
+  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu, homolGer, comprasOp, comprasForn, comprasDet] = await Promise.all([
     pega("mv_cco_rxo_gerente?select=*"),
     pega("mv_cco_custos_gerente_mes?select=*"),
     pega("v_cco_epi_gerente?select=*"),
@@ -336,7 +337,9 @@ async function carregar(){
     tenta(pegaTudo("mv_cco_nps_gerente?select=*")),
     tenta(pega("mv_cco_nps_resumo?select=*&centro_lucro=is.null")),
     tenta(pegaTudo("mv_cco_homologacao_gerente?select=*")),
+    tenta(pegaTudo("mv_cco_compras_operacao?select=*")),
     tenta(pegaTudo("mv_cco_compras_fornecedor?select=*")),
+    tenta(pegaTudo("mv_cco_compras_detalhe?select=*")),
   ]);
   const canon = g => { const u=(g||"").toUpperCase();
     if(u.includes("PEDRO AUGUSTO LEAL")) return "CÁSSIA";
@@ -347,7 +350,7 @@ async function carregar(){
     return null; };
   corr.forEach(o=>o.g=canon(o.gerente));
   prev.forEach(o=>o.g=canon(o.gerente));
-  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu,homolGer,comprasForn};
+  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu,homolGer,comprasOp,comprasForn,comprasDet};
   D.rhTot = (rhTot && rhTot[0]) || null;
   D.rhK = (rhKpis && rhKpis[0]) || null;
   const pctNorm = v => { v = +v||0; return v <= 1 ? v*100 : v; };
@@ -823,51 +826,104 @@ function npsSecaoGerente(G){
 }
 
 /* ---------- Compras / Homologação de fornecedores ---------- */
+function fmtCnpj(c){ const s=String(c||"").padStart(14,"0");
+  return s.slice(0,2)+"."+s.slice(2,5)+"."+s.slice(5,8)+"/"+s.slice(8,12)+"-"+s.slice(12); }
+
 function gerCompras(G){
-  const kpi = (D.homolGer||[]).find(r=>r.gcod===G);
-  const forn = (D.comprasForn||[]).filter(r=>r.gcod===G);
-  if(!kpi && !forn.length)
-    return `<section><h2>Compras — Homologação</h2><div class="nota">Sem compras de manutenção com fornecedor identificado no período coletado.</div></section>`;
+  const todasForn = (D.comprasForn||[]).filter(r=>r.gcod===G);
+  const todasOp   = (D.comprasOp||[]).filter(r=>r.gcod===G);
+  const todasDet  = (D.comprasDet||[]).filter(r=>r.gcod===G);
+  if(!todasForn.length && !todasOp.length)
+    return `<section><h2>Compras — Homologação</h2><div class="nota">Sem compras de manutenção no período coletado.</div></section>`;
 
-  const vt = +(kpi?.valor_total||0), vl = +(kpi?.valor_liberado||0),
-        vnl = +(kpi?.valor_nao_liberado||0), vf = +(kpi?.valor_fora||0);
-  const pct = kpi?.pct_homologado!=null ? +kpi.pct_homologado : null;
+  const semanas = [...new Map(todasForn.map(r=>[r.semana_ini, r.semana_label])).entries()]
+    .sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  const filtroSem = compSem==="TODOS" ? null : compSem;
+  const passa = r => !filtroSem || r.semana_ini===filtroSem;
+
+  // agrega fornecedor
+  const aggForn = {};
+  todasForn.filter(passa).forEach(r=>{
+    const k=r.cnpj+"|"+r.situacao;
+    (aggForn[k] ||= {cnpj:r.cnpj, fornecedor:r.fornecedor, homologado_razao:r.homologado_razao, situacao:r.situacao, valor:0, lancamentos:0});
+    aggForn[k].valor += +r.valor; aggForn[k].lancamentos += +r.lancamentos;
+  });
+  const forn = Object.values(aggForn);
+  const soma = sit => forn.filter(f=>f.situacao===sit).reduce((s,f)=>s+f.valor,0);
+  const vl=soma('LIBERADO'), vnl=soma('CADASTRADO_NAO_LIBERADO'), vf=soma('NAO_HOMOLOGADO'), vest=soma('ESTOQUE_INTERNO');
+  const vhomolgavel = vl+vnl+vf;          // base que pode ser homologada (com fornecedor)
+  const vt = vhomolgavel + vest;          // total = bate com o custo de manutenção
+  const pct = vhomolgavel? Math.round(1000*vl/vhomolgavel)/10 : null;
   const corPct = pct==null?"":pct>=80?"ok":pct>=50?"warn":"bad";
+  const fornFora = forn.filter(f=>f.situacao==='NAO_HOMOLOGADO').length;
 
-  // cards
-  const cards = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));max-width:960px">
-    ${big("Compra homologada", pct==null?"—":pct.toLocaleString("pt-BR")+"%",
-        "de fornecedor LIBERADO no portal", corPct)}
-    ${big("Comprado fora", fmtMil(vf),
-        (kpi?.fornecedores_fora||0)+" fornecedor(es) não homologado(s)", vf>0?"bad":"ok")}
-    ${big("Total do período", fmtMil(vt),
-        fmtMil(vl)+" liberado · "+fmtMil(vnl)+" cadastrado s/ liberação","")}
+  const selSem = `<select class="mes" onchange="compSem=this.value;render(abaAtual)">
+    <option value="TODOS" ${compSem==="TODOS"?"selected":""}>TODOS</option>
+    ${semanas.map(([ini,lab])=>`<option value="${ini}" ${compSem===ini?"selected":""}>${lab}</option>`).join("")}
+  </select>`;
+
+  const cards = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));max-width:1100px">
+    ${big("Compra homologada", pct==null?"—":pct.toLocaleString("pt-BR")+"%","% do que tem fornecedor externo", corPct)}
+    ${big("Comprado fora", fmtMil(vf), fornFora+" fornecedor(es) não homologado(s)", vf>0?"bad":"ok")}
+    ${big("Compra externa", fmtMil(vhomolgavel), fmtMil(vl)+" liberado · "+fmtMil(vnl)+" s/ liberação","")}
+    ${big("Estoque interno", fmtMil(vest), "saída de estoque · sem fornecedor a homologar","")}
+    ${big("Total do período", fmtMil(vt), "concilia com o custo de manutenção","")}
   </div>`;
 
-  // tabela de fornecedores comprados FORA (o que interessa acionar)
-  const fora = forn.filter(f=>f.situacao==='NAO_HOMOLOGADO').sort((a,b)=>+b.valor-+a.valor);
-  const naoLib = forn.filter(f=>f.situacao==='CADASTRADO_NAO_LIBERADO').sort((a,b)=>+b.valor-+a.valor);
-  const fmtCnpj = c => { const s=String(c||"").padStart(14,"0");
-    return s.slice(0,2)+"."+s.slice(2,5)+"."+s.slice(5,8)+"/"+s.slice(8,12)+"-"+s.slice(12); };
+  // quadro por operação
+  const aggOp = {};
+  todasOp.filter(passa).forEach(r=>{
+    (aggOp[r.operacao] ||= {operacao:r.operacao, total:0, lib:0, fora:0, est:0});
+    aggOp[r.operacao].total += +r.valor_total; aggOp[r.operacao].lib += +(r.valor_liberado||0);
+    aggOp[r.operacao].fora += +(r.valor_fora||0); aggOp[r.operacao].est += +(r.valor_estoque||0);
+  });
+  const ops = Object.values(aggOp).map(o=>{ const base=o.total-o.est;
+    return {...o, base, pct: base? Math.round(1000*o.lib/base)/10 : null}; })
+    .sort((a,b)=>b.total-a.total);
+  const tabOp = ops.length ? `<section><h2>Homologação por operação</h2>
+    <div class="nota">% sobre compras com fornecedor externo (estoque não entra na conta). Total inclui estoque.</div>
+    <table><tr><th>Operação</th><th class="dir">Total</th><th class="dir">Estoque</th><th class="dir">Fora</th><th style="width:190px">% Homologado</th></tr>
+    ${ops.map(o=>{ const p=o.pct==null?0:o.pct; const cor=p>=80?"var(--verde)":p>=50?"var(--ambar)":"var(--verm)";
+      return `<tr><td><span class="cel-main">${esc(o.operacao)}</span></td>
+        <td class="dir">${fmtMil(o.total)}</td>
+        <td class="dir" style="color:var(--muted)">${fmtMil(o.est)}</td>
+        <td class="dir" style="color:${o.fora>0?'var(--verm)':'inherit'}">${fmtMil(o.fora)}</td>
+        <td><div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:14px;background:#eef1f7;border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${p}%;background:${cor}"></div></div>
+          <span style="font-weight:700;color:${cor};min-width:44px;text-align:right">${o.pct==null?"—":p.toLocaleString("pt-BR")+"%"}</span>
+        </div></td></tr>`; }).join("")}</table></section>` : "";
 
+  // tabela fora com detalhe expansível
+  const fora = forn.filter(f=>f.situacao==='NAO_HOMOLOGADO').sort((a,b)=>b.valor-a.valor);
+  const detFor = cnpj => todasDet.filter(d=>d.cnpj===cnpj && passa(d))
+    .sort((a,b)=>String(b.data_doc).localeCompare(String(a.data_doc)));
   const tabFora = fora.length ? `<section><h2>Comprado fora da homologação</h2>
-    <div class="nota">Fornecedores <b>não homologados</b> no portal de governança, ordenados por valor. Ação: solicitar homologação ou migrar a compra.</div>
+    <div class="nota">Fornecedores <b>não homologados</b>, ordenados por valor. Clique no nome para ver as compras.</div>
     <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th><th class="dir">Lançs.</th></tr>
-    ${fora.map(f=>`<tr><td><span class="cel-main">${esc(f.fornecedor||"—")}</span></td>
-      <td>${fmtCnpj(f.cnpj)}</td>
-      <td class="dir" style="color:var(--verm);font-weight:700">${fmtMil(+f.valor)}</td>
-      <td class="dir">${f.lancamentos}</td></tr>`).join("")}</table></section>` : "";
+    ${fora.map((f,i)=>{ const det=detFor(f.cnpj);
+      const linhasDet = det.map(d=>`<tr class="det-row"><td style="padding-left:26px" colspan="2">
+          <span class="cel-sub">${esc((d.data_doc||"").slice(0,10).split("-").reverse().join("/"))} · ${esc(d.operacao||"—")} · OS ${esc(d.os||"—")}</span><br>
+          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,60))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
+        <td class="dir">${fmtMil(+d.valor)}</td><td></td></tr>`).join("");
+      return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('det-${G}-${i}'); b.style.display = b.style.display==='none'?'table-row-group':'none';">
+          <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
+          <td>${fmtCnpj(f.cnpj)}</td>
+          <td class="dir" style="color:var(--verm);font-weight:700">${fmtMil(f.valor)}</td>
+          <td class="dir">${f.lancamentos}</td></tr>
+        <tbody id="det-${G}-${i}" style="display:none">${linhasDet}</tbody>`;
+    }).join("")}</table></section>` : "";
 
+  const naoLib = forn.filter(f=>f.situacao==='CADASTRADO_NAO_LIBERADO').sort((a,b)=>b.valor-a.valor);
   const tabNaoLib = naoLib.length ? `<section><h2>Cadastrado, mas sem liberação de compra</h2>
-    <div class="nota">Existe no portal, porém sem status LIBERADO. Vale confirmar a homologação antes de novas compras.</div>
+    <div class="nota">Existe no portal, porém sem status LIBERADO. Confirme a homologação antes de novas compras.</div>
     <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th></tr>
-    ${naoLib.map(f=>`<tr><td>${esc(f.fornecedor||f.homologado_razao||"—")}</td>
-      <td>${fmtCnpj(f.cnpj)}</td>
-      <td class="dir" style="color:var(--ambar);font-weight:700">${fmtMil(+f.valor)}</td></tr>`).join("")}</table></section>` : "";
+    ${naoLib.map(f=>`<tr><td>${esc(f.fornecedor||f.homologado_razao||"—")}</td><td>${fmtCnpj(f.cnpj)}</td>
+      <td class="dir" style="color:var(--ambar);font-weight:700">${fmtMil(f.valor)}</td></tr>`).join("")}</table></section>` : "";
 
-  return `<section><h2>Compras — Homologação de fornecedores</h2>
-    <div class="nota">Cruzamento do custo de manutenção (por CNPJ) com a base de fornecedores homologados do portal de governança. Foto da última coleta.</div>
-    ${cards}</section>${tabFora}${tabNaoLib}`;
+  return `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Compras — Homologação de fornecedores ${selSem}</h2>
+    <div class="nota">Cruzamento do custo de manutenção (por CNPJ) com a base de homologados. Total concilia com o custo; % calculado só sobre compras com fornecedor externo.</div>
+    ${cards}</section>${tabOp}${tabFora}${tabNaoLib}`;
 }
 
 /* ---------- Resumo executivo ---------- */
@@ -2465,5 +2521,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260930-140000 -->
+<!-- build 20260930-161000 -->
 </html>
