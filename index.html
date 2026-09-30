@@ -259,6 +259,7 @@ const fmtAuto = v => {
   return "R$ " + Math.round(v).toLocaleString("pt-BR");
 };
 const fmtMil = v => v==null ? "—" : "R$ " + (v/1e3).toLocaleString("pt-BR",{maximumFractionDigits:0}) + " mil";
+const fmtReais = v => v==null ? "—" : "R$ " + Math.round(+v).toLocaleString("pt-BR");
 const pct = (a,b) => (b&&a!=null) ? Math.round(1000*a/b)/10 : null;
 const esc = s => String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const esc2 = esc;
@@ -860,10 +861,10 @@ function gerCompras(G){
 
   const cards = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));max-width:1100px">
     ${big("Compra homologada", pct==null?"—":pct.toLocaleString("pt-BR")+"%","% do que tem fornecedor externo · "+mesLbl, corPct)}
-    ${big("Fora da Política", fmtMil(vf), (kpiMes?.fornecedores_fora||0)+" fornecedor(es) não homologado(s)", vf>0?"bad":"ok")}
-    ${big("Compra", fmtMil(vExterna), fmtMil(vl)+" liberado · "+fmtMil(vnl)+" s/ liberação","")}
-    ${big("Estoque", fmtMil(vest), "saída de estoque · sem fornecedor a homologar","")}
-    ${big("Produtos ("+mesLbl+")", fmtMil(vTotProd), "peças/materiais · serviços em quadro à parte","")}
+    ${big("Fora da Política", fmtReais(vf), (kpiMes?.fornecedores_fora||0)+" fornecedor(es) não homologado(s)", vf>0?"bad":"ok")}
+    ${big("Compra", fmtReais(vExterna), fmtReais(vl)+" liberado · "+fmtReais(vnl)+" s/ liberação","")}
+    ${big("Estoque", fmtReais(vest), "saída de estoque · sem fornecedor a homologar","")}
+    ${big("Produtos ("+mesLbl+")", fmtReais(vTotProd), "peças/materiais · serviços em quadro à parte","")}
   </div>`;
 
   // ===== filtro de semana (agora ao lado de "Homologação por operação") =====
@@ -892,12 +893,12 @@ function gerCompras(G){
         return `<tr class="det-row"><td style="padding-left:26px" colspan="2">
           <span class="cel-sub">${esc(dataBR(d.data_doc))} · ${esc(d.fornecedor||"(estoque)")} · OS ${esc(d.os||"—")}</span><br>
           <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}</span></td>
-          <td class="dir" style="color:${cs}">${fmtMil(+d.valor)}</td><td></td></tr>`; }).join("");
+          <td class="dir" style="color:${cs}">${fmtReais(+d.valor)}</td><td></td></tr>`; }).join("");
       return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('op-${G}-${i}'); b.style.display=b.style.display==='none'?'table-row-group':'none';">
         <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(o.operacao)}</span></td>
-        <td class="dir">${fmtMil(o.total)}</td>
-        <td class="dir" style="color:var(--muted)">${fmtMil(o.est)}</td>
-        <td class="dir" style="color:${o.fora>0?'var(--verm)':'inherit'}">${fmtMil(o.fora)}</td>
+        <td class="dir">${fmtReais(o.total)}</td>
+        <td class="dir" style="color:var(--muted)">${fmtReais(o.est)}</td>
+        <td class="dir" style="color:${o.fora>0?'var(--verm)':'inherit'}">${fmtReais(o.fora)}</td>
         <td><div style="display:flex;align-items:center;gap:8px">
           <div style="flex:1;height:14px;background:#eef1f7;border-radius:3px;overflow:hidden">
             <div style="height:100%;width:${p}%;background:${cor}"></div></div>
@@ -920,10 +921,10 @@ function gerCompras(G){
       const linhasDet = det.map(d=>`<tr class="det-row"><td style="padding-left:26px" colspan="2">
           <span class="cel-sub">${esc(dataBR(d.data_doc))} · ${esc(d.operacao||"—")} · OS ${esc(d.os||"—")}</span><br>
           <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
-        <td class="dir">${fmtMil(+d.valor)}</td><td></td></tr>`).join("");
+        <td class="dir">${fmtReais(+d.valor)}</td><td></td></tr>`).join("");
       return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('det-${G}-${i}'); b.style.display=b.style.display==='none'?'table-row-group':'none';">
         <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
-        <td>${fmtCnpj(f.cnpj)}</td><td class="dir" style="color:var(--verm);font-weight:700">${fmtMil(f.valor)}</td>
+        <td>${fmtCnpj(f.cnpj)}</td><td class="dir" style="color:var(--verm);font-weight:700">${fmtReais(f.valor)}</td>
         <td class="dir">${f.lancamentos}</td></tr>
         <tbody id="det-${G}-${i}" style="display:none">${linhasDet}</tbody>`; }).join("")}</table></section>` : "";
 
@@ -935,16 +936,16 @@ function gerCompras(G){
   const totalServ=servs.reduce((s,x)=>s+x.valor,0);
   const detS=cnpj=>sDet.filter(d=>d.cnpj===cnpj&&passa(d)).sort((a,b)=>String(b.data_doc).localeCompare(String(a.data_doc)));
   const tabServ = servs.length ? `<section><h2>Serviços de manutenção e reparo</h2>
-    <div class="nota">Serviços (mão de obra externa), separados das peças. Sem homologação por ora — total: <b>${fmtMil(totalServ)}</b>. Clique no nome para ver os serviços.</div>
+    <div class="nota">Serviços (mão de obra externa), separados das peças. Sem homologação por ora — total: <b>${fmtReais(totalServ)}</b>. Clique no nome para ver os serviços.</div>
     <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th><th class="dir">Lançs.</th></tr>
     ${servs.map((f,i)=>{ const det=detS(f.cnpj);
       const linhasDet=det.map(d=>`<tr class="det-row"><td style="padding-left:26px" colspan="2">
           <span class="cel-sub">${esc(dataBR(d.data_doc))} · ${esc(d.operacao||"—")} · OS ${esc(d.os||"—")}</span><br>
           <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
-        <td class="dir">${fmtMil(+d.valor)}</td><td></td></tr>`).join("");
+        <td class="dir">${fmtReais(+d.valor)}</td><td></td></tr>`).join("");
       return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('sdet-${G}-${i}'); b.style.display=b.style.display==='none'?'table-row-group':'none';">
         <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
-        <td>${fmtCnpj(f.cnpj)}</td><td class="dir" style="font-weight:700">${fmtMil(f.valor)}</td>
+        <td>${fmtCnpj(f.cnpj)}</td><td class="dir" style="font-weight:700">${fmtReais(f.valor)}</td>
         <td class="dir">${f.lancamentos}</td></tr>
         <tbody id="sdet-${G}-${i}" style="display:none">${linhasDet}</tbody>`; }).join("")}</table></section>` : "";
 
@@ -966,7 +967,7 @@ function gerCompras(G){
     <table><tr><th>Fornecedor</th><th>OS</th><th class="dir">Valor</th><th>Homologado</th></tr>
     ${geralRows.slice(0,200).map(r=>`<tr><td><span class="cel-main">${esc(r.fornecedor||"—")}</span></td>
       <td>${esc(r.os||"—")}</td>
-      <td class="dir" style="font-weight:700">${fmtMil(r.valor)}</td>
+      <td class="dir" style="font-weight:700">${fmtReais(r.valor)}</td>
       <td>${selo(r)}</td></tr>`).join("")}</table></section>` : "";
 
   return `<section><h2>Compras — Homologação de fornecedores</h2>
@@ -2569,5 +2570,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260930-183000 -->
+<!-- build 20260930-190000 -->
 </html>
