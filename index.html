@@ -247,7 +247,7 @@ const GERENTES = ["ANDRÉS","CÁSSIA","KASSIANO","MARIANA","UESLEI"];
 const NOMES = {"ANDRÉS":"Andrés Valinas","MARIANA":"Mariana Abreu","CÁSSIA":"Cassia Palmeira",
                "KASSIANO":"Kassiano do Carmo","UESLEI":"Ueslei Mota"};
 const nomeCompleto = g => NOMES[(g||"").toUpperCase()] || cap(g||"");
-const SUBS = ["Resumo","DRE","Custos Manutenção","Pessoas","Faturamento","Corretivas & Preventivas","EPI","Frota","Seminovos"];
+const SUBS = ["Resumo","DRE","Custos Manutenção","Compras","Pessoas","Faturamento","Corretivas & Preventivas","EPI","Frota","Seminovos"];
 const cap = s => s[0]+s.slice(1).toLowerCase();
 
 const fmtMi = v => v==null ? "—" : "R$ " + (v/1e6).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}) + " mi";
@@ -302,7 +302,7 @@ async function pega(caminho){
 
 const tenta = pr => pr.catch(()=>[]);
 async function carregar(){
-  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu] = await Promise.all([
+  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu, homolGer, comprasForn] = await Promise.all([
     pega("mv_cco_rxo_gerente?select=*"),
     pega("mv_cco_custos_gerente_mes?select=*"),
     pega("v_cco_epi_gerente?select=*"),
@@ -335,6 +335,8 @@ async function carregar(){
     pegaTudo("mv_cco_frota_mapa?select=ativo,description,model,nome_cl,latitude,longitude,location_datetime,location_source,hourmeter,snapshot_date,gerente&gerente=not.is.null"),
     tenta(pegaTudo("mv_cco_nps_gerente?select=*")),
     tenta(pega("mv_cco_nps_resumo?select=*&centro_lucro=is.null")),
+    tenta(pegaTudo("mv_cco_homologacao_gerente?select=*")),
+    tenta(pegaTudo("mv_cco_compras_fornecedor?select=*")),
   ]);
   const canon = g => { const u=(g||"").toUpperCase();
     if(u.includes("PEDRO AUGUSTO LEAL")) return "CÁSSIA";
@@ -345,7 +347,7 @@ async function carregar(){
     return null; };
   corr.forEach(o=>o.g=canon(o.gerente));
   prev.forEach(o=>o.g=canon(o.gerente));
-  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu};
+  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu,homolGer,comprasForn};
   D.rhTot = (rhTot && rhTot[0]) || null;
   D.rhK = (rhKpis && rhKpis[0]) || null;
   const pctNorm = v => { v = +v||0; return v <= 1 ? v*100 : v; };
@@ -818,6 +820,54 @@ function npsSecaoGerente(G){
       </select></h2>
     <div class="nota">Pesquisa oficial de NPS (relatório corporativo). <b>+</b> abre o comentário do cliente.</div>
     <table><tr><th>Contrato</th><th>CL</th><th class="dir">Nota</th><th>Classificação</th></tr>${linhas}</table></section>`;
+}
+
+/* ---------- Compras / Homologação de fornecedores ---------- */
+function gerCompras(G){
+  const kpi = (D.homolGer||[]).find(r=>r.gcod===G);
+  const forn = (D.comprasForn||[]).filter(r=>r.gcod===G);
+  if(!kpi && !forn.length)
+    return `<section><h2>Compras — Homologação</h2><div class="nota">Sem compras de manutenção com fornecedor identificado no período coletado.</div></section>`;
+
+  const vt = +(kpi?.valor_total||0), vl = +(kpi?.valor_liberado||0),
+        vnl = +(kpi?.valor_nao_liberado||0), vf = +(kpi?.valor_fora||0);
+  const pct = kpi?.pct_homologado!=null ? +kpi.pct_homologado : null;
+  const corPct = pct==null?"":pct>=80?"ok":pct>=50?"warn":"bad";
+
+  // cards
+  const cards = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));max-width:960px">
+    ${big("Compra homologada", pct==null?"—":pct.toLocaleString("pt-BR")+"%",
+        "de fornecedor LIBERADO no portal", corPct)}
+    ${big("Comprado fora", fmtMil(vf),
+        (kpi?.fornecedores_fora||0)+" fornecedor(es) não homologado(s)", vf>0?"bad":"ok")}
+    ${big("Total do período", fmtMil(vt),
+        fmtMil(vl)+" liberado · "+fmtMil(vnl)+" cadastrado s/ liberação","")}
+  </div>`;
+
+  // tabela de fornecedores comprados FORA (o que interessa acionar)
+  const fora = forn.filter(f=>f.situacao==='NAO_HOMOLOGADO').sort((a,b)=>+b.valor-+a.valor);
+  const naoLib = forn.filter(f=>f.situacao==='CADASTRADO_NAO_LIBERADO').sort((a,b)=>+b.valor-+a.valor);
+  const fmtCnpj = c => { const s=String(c||"").padStart(14,"0");
+    return s.slice(0,2)+"."+s.slice(2,5)+"."+s.slice(5,8)+"/"+s.slice(8,12)+"-"+s.slice(12); };
+
+  const tabFora = fora.length ? `<section><h2>Comprado fora da homologação</h2>
+    <div class="nota">Fornecedores <b>não homologados</b> no portal de governança, ordenados por valor. Ação: solicitar homologação ou migrar a compra.</div>
+    <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th><th class="dir">Lançs.</th></tr>
+    ${fora.map(f=>`<tr><td><span class="cel-main">${esc(f.fornecedor||"—")}</span></td>
+      <td>${fmtCnpj(f.cnpj)}</td>
+      <td class="dir" style="color:var(--verm);font-weight:700">${fmtMil(+f.valor)}</td>
+      <td class="dir">${f.lancamentos}</td></tr>`).join("")}</table></section>` : "";
+
+  const tabNaoLib = naoLib.length ? `<section><h2>Cadastrado, mas sem liberação de compra</h2>
+    <div class="nota">Existe no portal, porém sem status LIBERADO. Vale confirmar a homologação antes de novas compras.</div>
+    <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th></tr>
+    ${naoLib.map(f=>`<tr><td>${esc(f.fornecedor||f.homologado_razao||"—")}</td>
+      <td>${fmtCnpj(f.cnpj)}</td>
+      <td class="dir" style="color:var(--ambar);font-weight:700">${fmtMil(+f.valor)}</td></tr>`).join("")}</table></section>` : "";
+
+  return `<section><h2>Compras — Homologação de fornecedores</h2>
+    <div class="nota">Cruzamento do custo de manutenção (por CNPJ) com a base de fornecedores homologados do portal de governança. Foto da última coleta.</div>
+    ${cards}</section>${tabFora}${tabNaoLib}`;
 }
 
 /* ---------- Resumo executivo ---------- */
@@ -2369,6 +2419,7 @@ function render(aba){
                 : subAba==="Frota" ? gerFrota(G)
                 : subAba==="Seminovos" ? gerSeminovos(G)
                 : subAba==="Custos Manutenção" ? gerCustos(G)
+                : subAba==="Compras" ? gerCompras(G)
                 : gerEPI(G));
     if(subAba==="Frota") setTimeout(()=>initMapaFrota(G), 50);
   }
@@ -2414,5 +2465,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260930-093000 -->
+<!-- build 20260930-140000 -->
 </html>
