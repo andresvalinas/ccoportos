@@ -303,7 +303,7 @@ async function pega(caminho){
 
 const tenta = pr => pr.catch(()=>[]);
 async function carregar(){
-  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu, homolGer, comprasOp, comprasForn, comprasDet, servForn, servDet] = await Promise.all([
+  const [rxo, custos, epi, osk, prevk, corr, prev, saude, rxoOp, res, orcManut, epiItens, resOf, epiColab, resOp, horAtual, fat, fatMes, rhKpis, rhDesl, rhAbs, rhDeslMes, rhAbsMes, rhTot, enx, dre, custoOp, custoMaq, equip, frota, nps, npsBu, homolGer, homolGerMes, comprasOp, comprasForn, comprasDet, servForn, servDet, geralMes] = await Promise.all([
     pega("mv_cco_rxo_gerente?select=*"),
     pega("mv_cco_custos_gerente_mes?select=*"),
     pega("v_cco_epi_gerente?select=*"),
@@ -337,11 +337,13 @@ async function carregar(){
     tenta(pegaTudo("mv_cco_nps_gerente?select=*")),
     tenta(pega("mv_cco_nps_resumo?select=*&centro_lucro=is.null")),
     tenta(pegaTudo("mv_cco_homologacao_gerente?select=*")),
+    tenta(pegaTudo("mv_cco_homologacao_gerente_mes?select=*")),
     tenta(pegaTudo("mv_cco_compras_operacao?select=*")),
     tenta(pegaTudo("mv_cco_compras_fornecedor?select=*")),
     tenta(pegaTudo("mv_cco_compras_detalhe?select=*")),
     tenta(pegaTudo("mv_cco_servicos_fornecedor?select=*")),
     tenta(pegaTudo("mv_cco_servicos_detalhe?select=*")),
+    tenta(pegaTudo("mv_cco_compras_geral_mes?select=*")),
   ]);
   const canon = g => { const u=(g||"").toUpperCase();
     if(u.includes("PEDRO AUGUSTO LEAL")) return "CÁSSIA";
@@ -352,7 +354,7 @@ async function carregar(){
     return null; };
   corr.forEach(o=>o.g=canon(o.gerente));
   prev.forEach(o=>o.g=canon(o.gerente));
-  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu,homolGer,comprasOp,comprasForn,comprasDet,servForn,servDet};
+  D = {rxo,custos,epi,osk,prevk,corr,prev,saude,rxoOp,res,orcManut,epiItens,resOf,epiColab,resOp,dre,custoOp,custoMaq,equip,frota,fat,fatMes,rhDesl,rhAbs,rhDeslMes,rhAbsMes,enx,nps,npsBu,homolGer,homolGerMes,comprasOp,comprasForn,comprasDet,servForn,servDet,geralMes};
   D.rhTot = (rhTot && rhTot[0]) || null;
   D.rhK = (rhKpis && rhKpis[0]) || null;
   const pctNorm = v => { v = +v||0; return v <= 1 ? v*100 : v; };
@@ -830,12 +832,15 @@ function npsSecaoGerente(G){
 /* ---------- Compras / Homologação de fornecedores ---------- */
 function fmtCnpj(c){ const s=String(c||"").padStart(14,"0");
   return s.slice(0,2)+"."+s.slice(2,5)+"."+s.slice(5,8)+"/"+s.slice(8,12)+"-"+s.slice(12); }
+function dataBR(d){ return (d||"").slice(0,10).split("-").reverse().join("/"); }
 
 function gerCompras(G){
   const todasForn = (D.comprasForn||[]).filter(r=>r.gcod===G);
   const todasOp   = (D.comprasOp||[]).filter(r=>r.gcod===G);
   const todasDet  = (D.comprasDet||[]).filter(r=>r.gcod===G);
-  if(!todasForn.length && !todasOp.length)
+  const kpiMes    = (D.homolGerMes||[]).find(r=>r.gcod===G);
+  const geral     = (D.geralMes||[]).filter(r=>r.gcod===G);
+  if(!todasForn.length && !todasOp.length && !geral.length)
     return `<section><h2>Compras — Homologação</h2><div class="nota">Sem compras de manutenção no período coletado.</div></section>`;
 
   const semanas = [...new Map(todasForn.map(r=>[r.semana_ini, r.semana_label])).entries()]
@@ -843,36 +848,31 @@ function gerCompras(G){
   const filtroSem = compSem==="TODOS" ? null : compSem;
   const passa = r => !filtroSem || r.semana_ini===filtroSem;
 
-  // agrega fornecedor
-  const aggForn = {};
-  todasForn.filter(passa).forEach(r=>{
-    const k=r.cnpj+"|"+r.situacao;
-    (aggForn[k] ||= {cnpj:r.cnpj, fornecedor:r.fornecedor, homologado_razao:r.homologado_razao, situacao:r.situacao, valor:0, lancamentos:0});
-    aggForn[k].valor += +r.valor; aggForn[k].lancamentos += +r.lancamentos;
-  });
-  const forn = Object.values(aggForn);
-  const soma = sit => forn.filter(f=>f.situacao===sit).reduce((s,f)=>s+f.valor,0);
-  const vl=soma('LIBERADO'), vnl=soma('CADASTRADO_NAO_LIBERADO'), vf=soma('NAO_HOMOLOGADO'), vest=soma('ESTOQUE_INTERNO');
-  const vhomolgavel = vl+vnl+vf;          // base que pode ser homologada (com fornecedor)
-  const vt = vhomolgavel + vest;          // total = bate com o custo de manutenção
-  const pct = vhomolgavel? Math.round(1000*vl/vhomolgavel)/10 : null;
+  // ===== CARDS: sempre o MÊS VIGENTE inteiro (não dependem do filtro de semana) =====
+  const mVt = +(kpiMes?.valor_homologavel||0);   // produtos c/ fornecedor externo? não: total produtos
+  const vTotProd = +(kpiMes?.valor_total||0);
+  const vl = +(kpiMes?.valor_liberado||0), vnl=+(kpiMes?.valor_nao_liberado||0),
+        vf = +(kpiMes?.valor_fora||0), vest=+(kpiMes?.valor_estoque||0);
+  const vExterna = vl+vnl+vf;
+  const pct = kpiMes?.pct_homologado!=null ? +kpiMes.pct_homologado : null;
   const corPct = pct==null?"":pct>=80?"ok":pct>=50?"warn":"bad";
-  const fornFora = forn.filter(f=>f.situacao==='NAO_HOMOLOGADO').length;
+  const mesLbl = kpiMes?.mes ? (kpiMes.mes.slice(5)+"/"+kpiMes.mes.slice(0,4)) : "mês vigente";
 
+  const cards = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));max-width:1100px">
+    ${big("Compra homologada", pct==null?"—":pct.toLocaleString("pt-BR")+"%","% do que tem fornecedor externo · "+mesLbl, corPct)}
+    ${big("Fora da Política", fmtMil(vf), (kpiMes?.fornecedores_fora||0)+" fornecedor(es) não homologado(s)", vf>0?"bad":"ok")}
+    ${big("Compra", fmtMil(vExterna), fmtMil(vl)+" liberado · "+fmtMil(vnl)+" s/ liberação","")}
+    ${big("Estoque", fmtMil(vest), "saída de estoque · sem fornecedor a homologar","")}
+    ${big("Produtos ("+mesLbl+")", fmtMil(vTotProd), "peças/materiais · serviços em quadro à parte","")}
+  </div>`;
+
+  // ===== filtro de semana (agora ao lado de "Homologação por operação") =====
   const selSem = `<select class="mes" onchange="compSem=this.value;render(abaAtual)">
     <option value="TODOS" ${compSem==="TODOS"?"selected":""}>TODOS</option>
     ${semanas.map(([ini,lab])=>`<option value="${ini}" ${compSem===ini?"selected":""}>${lab}</option>`).join("")}
   </select>`;
 
-  const cards = `<div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));max-width:1100px">
-    ${big("Compra homologada", pct==null?"—":pct.toLocaleString("pt-BR")+"%","% do que tem fornecedor externo", corPct)}
-    ${big("Comprado fora", fmtMil(vf), fornFora+" fornecedor(es) não homologado(s)", vf>0?"bad":"ok")}
-    ${big("Compra externa", fmtMil(vhomolgavel), fmtMil(vl)+" liberado · "+fmtMil(vnl)+" s/ liberação","")}
-    ${big("Estoque interno", fmtMil(vest), "saída de estoque · sem fornecedor a homologar","")}
-    ${big("Produtos (peças/mat.)", fmtMil(vt), "total de produtos · serviços em quadro à parte","")}
-  </div>`;
-
-  // quadro por operação
+  // ===== quadro por operação (respeita o filtro de semana) + expandir onde foi gasto =====
   const aggOp = {};
   todasOp.filter(passa).forEach(r=>{
     (aggOp[r.operacao] ||= {operacao:r.operacao, total:0, lib:0, fora:0, est:0});
@@ -880,13 +880,21 @@ function gerCompras(G){
     aggOp[r.operacao].fora += +(r.valor_fora||0); aggOp[r.operacao].est += +(r.valor_estoque||0);
   });
   const ops = Object.values(aggOp).map(o=>{ const base=o.total-o.est;
-    return {...o, base, pct: base? Math.round(1000*o.lib/base)/10 : null}; })
-    .sort((a,b)=>b.total-a.total);
-  const tabOp = ops.length ? `<section><h2>Homologação por operação</h2>
-    <div class="nota">% sobre compras com fornecedor externo (estoque não entra na conta). Total inclui estoque.</div>
-    <table><tr><th>Operação</th><th class="dir">Total</th><th class="dir">Estoque</th><th class="dir">Fora</th><th style="width:190px">% Homologado</th></tr>
-    ${ops.map(o=>{ const p=o.pct==null?0:o.pct; const cor=p>=80?"var(--verde)":p>=50?"var(--ambar)":"var(--verm)";
-      return `<tr><td><span class="cel-main">${esc(o.operacao)}</span></td>
+    return {...o, base, pct: base? Math.round(1000*o.lib/base)/10 : null}; }).sort((a,b)=>b.total-a.total);
+  const detOp = op => todasDet.filter(d=>d.operacao===op && passa(d)).sort((a,b)=>b.valor-a.valor);
+  const tabOp = ops.length ? `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Homologação por operação ${selSem}</h2>
+    <div class="nota">% sobre compras com fornecedor externo (estoque não entra). Clique na operação para ver onde foi gasto.</div>
+    <table><tr><th>Operação</th><th class="dir">Total</th><th class="dir">Estoque</th><th class="dir">Fora</th><th style="width:180px">% Homologado</th></tr>
+    ${ops.map((o,i)=>{ const p=o.pct==null?0:o.pct; const cor=p>=80?"var(--verde)":p>=50?"var(--ambar)":"var(--verm)";
+      const det=detOp(o.operacao);
+      const linhasDet = det.slice(0,40).map(d=>{ const homol = d.situacao==='LIBERADO';
+        const cs = d.situacao==='ESTOQUE_INTERNO'?"var(--muted)":homol?"var(--verde)":"var(--verm)";
+        return `<tr class="det-row"><td style="padding-left:26px" colspan="2">
+          <span class="cel-sub">${esc(dataBR(d.data_doc))} · ${esc(d.fornecedor||"(estoque)")} · OS ${esc(d.os||"—")}</span><br>
+          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}</span></td>
+          <td class="dir" style="color:${cs}">${fmtMil(+d.valor)}</td><td></td></tr>`; }).join("");
+      return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('op-${G}-${i}'); b.style.display=b.style.display==='none'?'table-row-group':'none';">
+        <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(o.operacao)}</span></td>
         <td class="dir">${fmtMil(o.total)}</td>
         <td class="dir" style="color:var(--muted)">${fmtMil(o.est)}</td>
         <td class="dir" style="color:${o.fora>0?'var(--verm)':'inherit'}">${fmtMil(o.fora)}</td>
@@ -894,65 +902,76 @@ function gerCompras(G){
           <div style="flex:1;height:14px;background:#eef1f7;border-radius:3px;overflow:hidden">
             <div style="height:100%;width:${p}%;background:${cor}"></div></div>
           <span style="font-weight:700;color:${cor};min-width:44px;text-align:right">${o.pct==null?"—":p.toLocaleString("pt-BR")+"%"}</span>
-        </div></td></tr>`; }).join("")}</table></section>` : "";
+        </div></td></tr>
+        <tbody id="op-${G}-${i}" style="display:none">${linhasDet}</tbody>`; }).join("")}</table></section>` : "";
 
-  // tabela fora com detalhe expansível
+  // ===== comprado fora (produtos) — respeita filtro de semana =====
+  const aggForn = {};
+  todasForn.filter(passa).forEach(r=>{ const k=r.cnpj+"|"+r.situacao;
+    (aggForn[k] ||= {cnpj:r.cnpj, fornecedor:r.fornecedor, situacao:r.situacao, valor:0, lancamentos:0});
+    aggForn[k].valor += +r.valor; aggForn[k].lancamentos += +r.lancamentos; });
+  const forn = Object.values(aggForn);
   const fora = forn.filter(f=>f.situacao==='NAO_HOMOLOGADO').sort((a,b)=>b.valor-a.valor);
-  const detFor = cnpj => todasDet.filter(d=>d.cnpj===cnpj && passa(d))
-    .sort((a,b)=>String(b.data_doc).localeCompare(String(a.data_doc)));
-  const tabFora = fora.length ? `<section><h2>Comprado fora da homologação</h2>
+  const detFor = cnpj => todasDet.filter(d=>d.cnpj===cnpj && passa(d)).sort((a,b)=>String(b.data_doc).localeCompare(String(a.data_doc)));
+  const tabFora = fora.length ? `<section><h2>Comprado fora da política</h2>
     <div class="nota">Fornecedores <b>não homologados</b>, ordenados por valor. Clique no nome para ver as compras.</div>
     <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th><th class="dir">Lançs.</th></tr>
     ${fora.map((f,i)=>{ const det=detFor(f.cnpj);
       const linhasDet = det.map(d=>`<tr class="det-row"><td style="padding-left:26px" colspan="2">
-          <span class="cel-sub">${esc((d.data_doc||"").slice(0,10).split("-").reverse().join("/"))} · ${esc(d.operacao||"—")} · OS ${esc(d.os||"—")}</span><br>
-          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,60))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
+          <span class="cel-sub">${esc(dataBR(d.data_doc))} · ${esc(d.operacao||"—")} · OS ${esc(d.os||"—")}</span><br>
+          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
         <td class="dir">${fmtMil(+d.valor)}</td><td></td></tr>`).join("");
-      return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('det-${G}-${i}'); b.style.display = b.style.display==='none'?'table-row-group':'none';">
-          <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
-          <td>${fmtCnpj(f.cnpj)}</td>
-          <td class="dir" style="color:var(--verm);font-weight:700">${fmtMil(f.valor)}</td>
-          <td class="dir">${f.lancamentos}</td></tr>
-        <tbody id="det-${G}-${i}" style="display:none">${linhasDet}</tbody>`;
-    }).join("")}</table></section>` : "";
+      return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('det-${G}-${i}'); b.style.display=b.style.display==='none'?'table-row-group':'none';">
+        <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
+        <td>${fmtCnpj(f.cnpj)}</td><td class="dir" style="color:var(--verm);font-weight:700">${fmtMil(f.valor)}</td>
+        <td class="dir">${f.lancamentos}</td></tr>
+        <tbody id="det-${G}-${i}" style="display:none">${linhasDet}</tbody>`; }).join("")}</table></section>` : "";
 
-  const naoLib = forn.filter(f=>f.situacao==='CADASTRADO_NAO_LIBERADO').sort((a,b)=>b.valor-a.valor);
-  const tabNaoLib = naoLib.length ? `<section><h2>Cadastrado, mas sem liberação de compra</h2>
-    <div class="nota">Existe no portal, porém sem status LIBERADO. Confirme a homologação antes de novas compras.</div>
-    <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th></tr>
-    ${naoLib.map(f=>`<tr><td>${esc(f.fornecedor||f.homologado_razao||"—")}</td><td>${fmtCnpj(f.cnpj)}</td>
-      <td class="dir" style="color:var(--ambar);font-weight:700">${fmtMil(f.valor)}</td></tr>`).join("")}</table></section>` : "";
-
-  // TABELA DE SERVIÇOS (à parte — por enquanto não homologamos serviços)
-  const sForn = (D.servForn||[]).filter(r=>r.gcod===G);
-  const sDet  = (D.servDet||[]).filter(r=>r.gcod===G);
-  const aggS = {};
-  sForn.filter(passa).forEach(r=>{
-    (aggS[r.cnpj] ||= {cnpj:r.cnpj, fornecedor:r.fornecedor, valor:0, lancamentos:0});
-    aggS[r.cnpj].valor += +r.valor; aggS[r.cnpj].lancamentos += +r.lancamentos;
-  });
-  const servs = Object.values(aggS).sort((a,b)=>b.valor-a.valor);
-  const totalServ = servs.reduce((s,x)=>s+x.valor,0);
-  const detS = cnpj => sDet.filter(d=>d.cnpj===cnpj && passa(d)).sort((a,b)=>String(b.data_doc).localeCompare(String(a.data_doc)));
+  // ===== SERVIÇOS (à parte) =====
+  const sForn=(D.servForn||[]).filter(r=>r.gcod===G), sDet=(D.servDet||[]).filter(r=>r.gcod===G);
+  const aggS={}; sForn.filter(passa).forEach(r=>{ (aggS[r.cnpj] ||= {cnpj:r.cnpj,fornecedor:r.fornecedor,valor:0,lancamentos:0});
+    aggS[r.cnpj].valor+=+r.valor; aggS[r.cnpj].lancamentos+=+r.lancamentos; });
+  const servs=Object.values(aggS).sort((a,b)=>b.valor-a.valor);
+  const totalServ=servs.reduce((s,x)=>s+x.valor,0);
+  const detS=cnpj=>sDet.filter(d=>d.cnpj===cnpj&&passa(d)).sort((a,b)=>String(b.data_doc).localeCompare(String(a.data_doc)));
   const tabServ = servs.length ? `<section><h2>Serviços de manutenção e reparo</h2>
-    <div class="nota">Contratação de <b>serviços</b> (mão de obra externa), separada das peças/materiais. Por enquanto não há homologação de serviços — total do período: <b>${fmtMil(totalServ)}</b>. Clique no nome para ver os serviços.</div>
+    <div class="nota">Serviços (mão de obra externa), separados das peças. Sem homologação por ora — total: <b>${fmtMil(totalServ)}</b>. Clique no nome para ver os serviços.</div>
     <table><tr><th>Fornecedor</th><th>CNPJ</th><th class="dir">Valor</th><th class="dir">Lançs.</th></tr>
     ${servs.map((f,i)=>{ const det=detS(f.cnpj);
-      const linhasDet = det.map(d=>`<tr class="det-row"><td style="padding-left:26px" colspan="2">
-          <span class="cel-sub">${esc((d.data_doc||"").slice(0,10).split("-").reverse().join("/"))} · ${esc(d.operacao||"—")} · OS ${esc(d.os||"—")}</span><br>
-          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,60))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
+      const linhasDet=det.map(d=>`<tr class="det-row"><td style="padding-left:26px" colspan="2">
+          <span class="cel-sub">${esc(dataBR(d.data_doc))} · ${esc(d.operacao||"—")} · OS ${esc(d.os||"—")}</span><br>
+          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
         <td class="dir">${fmtMil(+d.valor)}</td><td></td></tr>`).join("");
-      return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('sdet-${G}-${i}'); b.style.display = b.style.display==='none'?'table-row-group':'none';">
-          <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
-          <td>${fmtCnpj(f.cnpj)}</td>
-          <td class="dir" style="font-weight:700">${fmtMil(f.valor)}</td>
-          <td class="dir">${f.lancamentos}</td></tr>
-        <tbody id="sdet-${G}-${i}" style="display:none">${linhasDet}</tbody>`;
-    }).join("")}</table></section>` : "";
+      return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('sdet-${G}-${i}'); b.style.display=b.style.display==='none'?'table-row-group':'none';">
+        <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
+        <td>${fmtCnpj(f.cnpj)}</td><td class="dir" style="font-weight:700">${fmtMil(f.valor)}</td>
+        <td class="dir">${f.lancamentos}</td></tr>
+        <tbody id="sdet-${G}-${i}" style="display:none">${linhasDet}</tbody>`; }).join("")}</table></section>` : "";
 
-  return `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Compras — Homologação de fornecedores ${selSem}</h2>
-    <div class="nota">Peças e materiais cruzados (por CNPJ) com a base de homologados. Serviços aparecem em quadro à parte. % calculado só sobre produtos com fornecedor externo.</div>
-    ${cards}</section>${tabOp}${tabFora}${tabNaoLib}${tabServ}`;
+  // ===== QUADRO GERAL DO MÊS: fornecedor, valor, OS, HOMOLOGADO (sim/não) =====
+  const gAgg = {};
+  geral.filter(r=>!r.eh_servico).forEach(r=>{
+    const k = r.cnpj+"|"+(r.os||"");
+    (gAgg[k] ||= {fornecedor:r.fornecedor, cnpj:r.cnpj, os:r.os, situacao:r.situacao, homologado:r.homologado, valor:0});
+    gAgg[k].valor += +r.valor;
+  });
+  const geralRows = Object.values(gAgg).sort((a,b)=>b.valor-a.valor);
+  const selo = r => {
+    if(r.situacao==='ESTOQUE_INTERNO') return '<span style="color:var(--muted);font-weight:700">Estoque</span>';
+    return r.homologado ? '<span style="color:var(--verde);font-weight:800">Sim</span>'
+                        : '<span style="color:var(--verm);font-weight:800">Não</span>';
+  };
+  const tabGeral = geralRows.length ? `<section><h2>Quadro geral do mês (${mesLbl})</h2>
+    <div class="nota">Todas as compras de produtos do mês vigente. Coluna Homologado: <span style="color:var(--verde);font-weight:700">Sim</span> = fornecedor liberado no portal · <span style="color:var(--verm);font-weight:700">Não</span> = fora da política.</div>
+    <table><tr><th>Fornecedor</th><th>OS</th><th class="dir">Valor</th><th>Homologado</th></tr>
+    ${geralRows.slice(0,200).map(r=>`<tr><td><span class="cel-main">${esc(r.fornecedor||"—")}</span></td>
+      <td>${esc(r.os||"—")}</td>
+      <td class="dir" style="font-weight:700">${fmtMil(r.valor)}</td>
+      <td>${selo(r)}</td></tr>`).join("")}</table></section>` : "";
+
+  return `<section><h2>Compras — Homologação de fornecedores</h2>
+    <div class="nota">Peças e materiais cruzados (por CNPJ) com a base de homologados. Cards no mês vigente; tabelas filtráveis por semana. Serviços em quadro à parte.</div>
+    ${cards}</section>${tabOp}${tabFora}${tabServ}${tabGeral}`;
 }
 
 /* ---------- Resumo executivo ---------- */
@@ -2550,5 +2569,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260930-171000 -->
+<!-- build 20260930-183000 -->
 </html>
