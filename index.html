@@ -865,6 +865,18 @@ function fmtCnpj(c){ const s=String(c||"").padStart(14,"0");
   return s.slice(0,2)+"."+s.slice(2,5)+"."+s.slice(5,8)+"/"+s.slice(8,12)+"-"+s.slice(12); }
 function dataBR(d){ return (d||"").slice(0,10).split("-").reverse().join("/"); }
 
+/* selo de status de homologação de um fornecedor */
+function seloHomolog(f){
+  if(!f || !f.hom_protocolo) return "";
+  const d = f.hom_data ? String(f.hom_data).slice(0,10).split("-").reverse().slice(0,2).join("/") : "";
+  const et = (f.hom_etapa||"").toLowerCase();
+  let cor = "var(--muted)", icone = "⏳";
+  if(et.includes("aprovad")){ cor="var(--verde)"; icone="✓"; }
+  else if(et.includes("reprovad")){ cor="var(--verm)"; icone="✗"; }
+  else if(et.includes("nalise")||et.includes("triagem")){ cor="var(--royal)"; icone="⟳"; }
+  return `<div class="cel-sub" style="color:${cor};margin-top:2px">${icone} Homologação ${esc(f.hom_etapa||"")}${d?" · solicitada "+d:""} (${esc(f.hom_protocolo)})</div>`;
+}
+
 function gerCompras(G){
   const todasForn = (D.comprasForn||[]).filter(r=>r.gcod===G);
   const todasOp   = (D.comprasOp||[]).filter(r=>r.gcod===G);
@@ -945,7 +957,8 @@ function gerCompras(G){
   // ===== comprado fora (produtos) — respeita filtro de semana =====
   const aggForn = {};
   todasForn.filter(passa).forEach(r=>{ const k=r.cnpj+"|"+r.situacao;
-    (aggForn[k] ||= {cnpj:r.cnpj, fornecedor:r.fornecedor, situacao:r.situacao, valor:0, lancamentos:0});
+    (aggForn[k] ||= {cnpj:r.cnpj, fornecedor:r.fornecedor, situacao:r.situacao, valor:0, lancamentos:0,
+                     hom_protocolo:r.hom_protocolo, hom_data:r.hom_data, hom_etapa:r.hom_etapa});
     aggForn[k].valor += +r.valor; aggForn[k].lancamentos += +r.lancamentos; });
   const forn = Object.values(aggForn);
   let fora = forn.filter(f=>f.situacao==='NAO_HOMOLOGADO').sort((a,b)=>b.valor-a.valor);
@@ -960,7 +973,7 @@ function gerCompras(G){
           <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}${d.nf?" · NF "+esc(d.nf):""}</span></td>
         <td class="dir">${fmtReais(+d.valor)}</td><td></td></tr>`).join("");
       return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('det-${G}-${i}'); b.style.display=b.style.display==='none'?'table-row-group':'none';">
-        <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span></td>
+        <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(f.fornecedor||"—")}</span>${seloHomolog(f)}</td>
         <td>${fmtCnpj(f.cnpj)}</td><td class="dir" style="color:var(--verm);font-weight:700">${fmtReais(f.valor)}</td>
         <td class="dir">${f.lancamentos}</td></tr>
         <tbody id="det-${G}-${i}" style="display:none">${linhasDet}</tbody>`; }).join("")}</table></section>` : "";
@@ -2609,5 +2622,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260930-205000 -->
+<!-- build 20261001-120000 -->
 </html>
