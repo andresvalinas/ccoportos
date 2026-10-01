@@ -874,7 +874,7 @@ function seloHomolog(f){
   if(et.includes("aprovad")){ cor="var(--verde)"; icone="✓"; }
   else if(et.includes("reprovad")){ cor="var(--verm)"; icone="✗"; }
   else if(et.includes("nalise")||et.includes("triagem")){ cor="var(--royal)"; icone="⟳"; }
-  return `<div class="cel-sub" style="color:${cor};margin-top:2px">${icone} Homologação ${esc(f.hom_etapa||"")}${d?" · solicitada "+d:""} (${esc(f.hom_protocolo)})</div>`;
+  return `<div class="cel-sub" style="color:${cor};margin-top:2px">${icone} <b>Solicitação de homologação: ${d||"—"}</b> · ${esc(f.hom_etapa||"")} · ${esc(f.hom_protocolo)}</div>`;
 }
 
 function gerCompras(G){
@@ -1004,13 +1004,15 @@ function gerCompras(G){
   const gAgg = {};
   geral.filter(r=>!r.eh_servico).forEach(r=>{
     const k = r.cnpj+"|"+(r.os||"");
-    (gAgg[k] ||= {fornecedor:r.fornecedor, cnpj:r.cnpj, os:r.os, situacao:r.situacao, homologado:r.homologado, valor:0});
+    (gAgg[k] ||= {fornecedor:r.fornecedor, cnpj:r.cnpj, os:r.os, situacao:r.situacao, homologado:r.homologado, tipo_fornecedor:r.tipo_fornecedor, valor:0});
     gAgg[k].valor += +r.valor;
   });
   let geralRows = Object.values(gAgg).sort((a,b)=>b.valor-a.valor);
   geralRows = compOrdena(geralRows, "geral");
   const selo = r => {
     if(r.situacao==='ESTOQUE_INTERNO') return '<span style="color:var(--muted);font-weight:700">Estoque</span>';
+    const tp = (r.tipo_fornecedor||"").toUpperCase();
+    if(r.homologado && tp.includes("CONCESSION")) return '<span style="color:var(--verde);font-weight:800">Sim</span> <span class="cel-sub" style="color:var(--verde)">concessionária</span>';
     return r.homologado ? '<span style="color:var(--verde);font-weight:800">Sim</span>'
                         : '<span style="color:var(--verm);font-weight:800">Não</span>';
   };
@@ -1022,9 +1024,32 @@ function gerCompras(G){
       <td class="dir" style="font-weight:700">${fmtReais(r.valor)}</td>
       <td>${selo(r)}</td></tr>`).join("")}</table></section>` : "";
 
+  // ===== PAINEL-RESUMO DA SEMANA (reflete o filtro; só aparece quando NÃO é TODOS) =====
+  let cardsSemana = "";
+  if(filtroSem){
+    // somas da semana a partir do forn (produtos, já filtrado por passa) + estoque via comprasOp
+    const sW = sit => forn.filter(f=>f.situacao===sit).reduce((s,f)=>s+f.valor,0);
+    const wl=sW('LIBERADO'), wnl=sW('CADASTRADO_NAO_LIBERADO'), wf=sW('NAO_HOMOLOGADO');
+    const wExt=wl+wnl+wf;
+    const wEst=todasOp.filter(passa).reduce((s,r)=>s+ +(r.valor_estoque||0),0);
+    const wTot=wExt+wEst;
+    const wPct=wExt? Math.round(1000*wl/wExt)/10 : null;
+    const wCor=wPct==null?"":wPct>=80?"ok":wPct>=50?"warn":"bad";
+    const semLbl = (semanas.find(s=>s[0]===filtroSem)||[null,filtroSem])[1];
+    cardsSemana = `<section><h2>Resumo da semana — ${esc(semLbl)}</h2>
+      <div class="nota">Mesmos indicadores dos cards do topo, mas recortados para a semana selecionada no filtro acima.</div>
+      <div class="grid-big" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));max-width:1100px">
+        ${big("Compra homologada", wPct==null?"—":wPct.toLocaleString("pt-BR")+"%","% do que tem fornecedor externo · semana", wCor)}
+        ${big("Fora da Política", fmtReais(wf), forn.filter(f=>f.situacao==='NAO_HOMOLOGADO').length+" fornecedor(es) não homologado(s)", wf>0?"bad":"ok")}
+        ${big("Compra", fmtReais(wExt), fmtReais(wl)+" liberado · "+fmtReais(wnl)+" s/ liberação","")}
+        ${big("Estoque", fmtReais(wEst), "saída de estoque · sem fornecedor a homologar","")}
+        ${big("Produtos (semana)", fmtReais(wTot), "peças/materiais da semana","")}
+      </div></section>`;
+  }
+
   return `<section><h2>Compras — Homologação de fornecedores</h2>
-    <div class="nota">Peças e materiais cruzados (por CNPJ) com a base de homologados. Cards no mês vigente; tabelas filtráveis por semana. Serviços em quadro à parte.</div>
-    ${cards}</section>${tabOp}${tabFora}${tabServ}${tabGeral}`;
+    <div class="nota">Peças e materiais cruzados (por CNPJ) com a base de homologados. <b>Liberados:</b> fornecedores com status LIBERADO + concessionárias/autorizadas + contrato (oficiais da marca, liberados por natureza). <b>Fora da política:</b> fornecedores sem cadastro no portal. Cards no mês vigente; tabelas filtráveis por semana. Serviços em quadro à parte.</div>
+    ${cards}</section>${tabOp}${cardsSemana}${tabFora}${tabServ}${tabGeral}`;
 }
 
 /* ---------- Resumo executivo ---------- */
@@ -2622,5 +2647,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20261001-130000 -->
+<!-- build 20261001-160000 -->
 </html>
