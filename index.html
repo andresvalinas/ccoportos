@@ -906,9 +906,10 @@ function gerCompras(G){
   // ===== quadro por operação (respeita o filtro de semana) + expandir onde foi gasto =====
   const aggOp = {};
   todasOp.filter(passa).forEach(r=>{
-    (aggOp[r.operacao] ||= {operacao:r.operacao, total:0, lib:0, fora:0, est:0});
+    (aggOp[r.operacao] ||= {operacao:r.operacao, total:0, lib:0, fora:0, est:0, nl:0});
     aggOp[r.operacao].total += +r.valor_total; aggOp[r.operacao].lib += +(r.valor_liberado||0);
     aggOp[r.operacao].fora += +(r.valor_fora||0); aggOp[r.operacao].est += +(r.valor_estoque||0);
+    aggOp[r.operacao].nl += +(r.valor_nao_liberado||0);
   });
   let ops = Object.values(aggOp).map(o=>{ const base=o.total-o.est;
     return {...o, base, pct: base? Math.round(1000*o.lib/base)/10 : null}; }).sort((a,b)=>b.total-a.total);
@@ -916,11 +917,14 @@ function gerCompras(G){
   const detOp = op => todasDet.filter(d=>d.operacao===op && passa(d)).sort((a,b)=>b.valor-a.valor);
   const tabOp = ops.length ? `<section><h2 style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">Homologação por operação ${selSem}</h2>
     <div class="nota">% sobre compras com fornecedor externo (estoque não entra). Clique na operação para ver onde foi gasto.</div>
-    <table>${compCabecalho("op",[{c:"operacao",t:"Operação"},{c:"total",t:"Total",dir:1},{c:"est",t:"Estoque",dir:1},{c:"fora",t:"Fora",dir:1},{c:"pct",t:"% Homologado",dir:1}])}
+    <table>${compCabecalho("op",[{c:"operacao",t:"Operação"},{c:"total",t:"Total",dir:1},{c:"est",t:"Estoque",dir:1},{c:"nl",t:"S/ liberação",dir:1},{c:"fora",t:"Fora",dir:1},{c:"pct",t:"% Homologado",dir:1}])}
     ${ops.map((o,i)=>{ const p=o.pct==null?0:o.pct; const cor=p>=80?"var(--verde)":p>=50?"var(--ambar)":"var(--verm)";
       const det=detOp(o.operacao);
-      const linhasDet = det.slice(0,40).map(d=>{ const homol = d.situacao==='LIBERADO';
-        const cs = d.situacao==='ESTOQUE_INTERNO'?"var(--muted)":homol?"var(--verde)":"var(--verm)";
+      const linhasDet = det.slice(0,40).map(d=>{
+        const cs = d.situacao==='ESTOQUE_INTERNO'?"var(--muted)"
+                 : d.situacao==='LIBERADO'?"var(--verde)"
+                 : d.situacao==='CADASTRADO_NAO_LIBERADO'?"var(--ambar)"
+                 : "var(--verm)";
         return `<tr class="det-row"><td style="padding-left:26px" colspan="2">
           <span class="cel-sub">${esc(dataBR(d.data_doc))} · ${esc(d.fornecedor||"(estoque)")} · OS ${esc(d.os||"—")}</span><br>
           <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}</span></td>
@@ -929,6 +933,7 @@ function gerCompras(G){
         <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(o.operacao)}</span></td>
         <td class="dir">${fmtReais(o.total)}</td>
         <td class="dir" style="color:var(--muted)">${fmtReais(o.est)}</td>
+        <td class="dir" style="color:${o.nl>0?'var(--ambar)':'inherit'}">${fmtReais(o.nl)}</td>
         <td class="dir" style="color:${o.fora>0?'var(--verm)':'inherit'}">${fmtReais(o.fora)}</td>
         <td><div style="display:flex;align-items:center;gap:8px">
           <div style="flex:1;height:14px;background:#eef1f7;border-radius:3px;overflow:hidden">
@@ -2604,5 +2609,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260930-201000 -->
+<!-- build 20260930-205000 -->
 </html>
