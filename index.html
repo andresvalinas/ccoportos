@@ -2067,7 +2067,7 @@ function initMapaFrota(G){
 /* ================= navegação ================= */
 
 const ROBOS_OCULTOS = ["rxo_oficial","custos_anual","faturamento_mes"];
-const CADENCIA_DIAS = {rxo_resultado:8, rxo_equipamentos:8, razao_completo:8, base_orcamento:180, custos_anual:180, orcamento_panorama:180};
+const CADENCIA_DIAS = {rxo_resultado:8, rxo_equipamentos:8, razao_completo:8, base_orcamento:180, custos_anual:180, orcamento_panorama:180, nps_detalhe:60};
 
 function statusRobo(s){
   if(s.sucesso === false) return "vermelho";
@@ -2118,7 +2118,7 @@ function sinaleiraRobos(){
       <span style="font-size:12px;font-weight:700"><span style="color:var(--verde)">● ${nv} em dia</span>
       ${na? ` · <span style="color:#D97706">● ${na} atenção</span>`:""}
       ${nr? ` · <span style="color:var(--verm)">● ${nr} parado</span>`:""}</span></h2>
-    <div class="nota">Farol respeita o plantão de cada robô: diários cobram 24h; os semanais (razão, RxO) acendem atenção após 8 dias; os anuais (base orçamentária) só após ~6 meses.</div>
+    <div class="nota">Farol respeita o plantão de cada robô: diários cobram 24h; os semanais (razão, RxO) acendem atenção após 8 dias; o NPS após 60 dias; os anuais (base orçamentária) só após ~6 meses.</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;margin-top:10px">` +
     linhas.map(s=>{
       const [nome, hora] = NOMES[s.coletor] || [s.coletor, "—"];
@@ -2604,5 +2604,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20260930-193000 -->
+<!-- build 20260930-201000 -->
 </html>
