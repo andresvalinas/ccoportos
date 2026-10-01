@@ -939,7 +939,7 @@ function gerCompras(G){
                  : "var(--verm)";
         return `<tr class="det-row"><td style="padding-left:26px" colspan="2">
           <span class="cel-sub">${esc(dataBR(d.data_doc))} · ${esc(d.fornecedor||"(estoque)")} · OS ${esc(d.os||"—")}</span><br>
-          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}</span></td>
+          <span class="cel-sub" style="color:var(--muted)">${esc((d.descritivo||"").slice(0,55))}</span>${seloHomolog(d)}</td>
           <td class="dir" style="color:${cs}">${fmtReais(+d.valor)}</td><td></td></tr>`; }).join("");
       return `<tr class="forn-row" style="cursor:pointer" onclick="const b=document.getElementById('op-${G}-${i}'); b.style.display=b.style.display==='none'?'table-row-group':'none';">
         <td><span class="cel-main" style="color:var(--royal)">▸ ${esc(o.operacao)}</span></td>
@@ -2085,7 +2085,7 @@ function initMapaFrota(G){
 /* ================= navegação ================= */
 
 const ROBOS_OCULTOS = ["rxo_oficial","custos_anual","faturamento_mes"];
-const CADENCIA_DIAS = {rxo_resultado:8, rxo_equipamentos:8, razao_completo:8, base_orcamento:180, custos_anual:180, orcamento_panorama:180, nps_detalhe:60};
+const CADENCIA_DIAS = {rxo_resultado:8, rxo_equipamentos:8, razao_completo:8, base_orcamento:180, custos_anual:180, orcamento_panorama:180, nps_detalhe:60, homologados:30, homologacoes:30};
 
 function statusRobo(s){
   if(s.sucesso === false) return "vermelho";
@@ -2622,5 +2622,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20261001-120000 -->
+<!-- build 20261001-130000 -->
 </html>
