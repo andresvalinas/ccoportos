@@ -281,7 +281,6 @@ let npsOrd = "prio"; // ordem da tabela de NPS: prio | nota_asc | nota_desc | al
 let rmrMes = null;   // mês selecionado na aba RMR
 let rmrGer = "BU";   // escopo da RMR: BU (completa) ou um gerente
 let compSem = "TODOS"; // filtro de semana da aba Compras
-let compMes = "TODOS"; // filtro de mês da aba Compras
 const compSort = {}; // ordenação por tabela: {chave:{col,dir}}
 let fatPer = "vida"; // período do faturamento: vida | mes
 const prioSel = {}; // filtro de prioridade por quadro
@@ -892,8 +891,7 @@ function gerCompras(G){
   const meses = [...new Set(todasForn.map(r=>r.mes).filter(Boolean))].sort();
   const nomeMesBR = m => { const n=["","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"]; return n[+m.slice(5)]+"/"+m.slice(0,4); };
   const filtroSem = compSem==="TODOS" ? null : compSem;
-  const filtroMes = compMes==="TODOS" ? null : compMes;
-  const passa = r => (!filtroSem || r.semana_ini===filtroSem) && (!filtroMes || r.mes===filtroMes);
+  const passa = r => !filtroSem || r.semana_ini===filtroSem;
 
   // ===== CARDS: sempre o MÊS VIGENTE inteiro (não dependem do filtro de semana) =====
   const mVt = +(kpiMes?.valor_homologavel||0);   // produtos c/ fornecedor externo? não: total produtos
@@ -914,11 +912,7 @@ function gerCompras(G){
   </div>`;
 
   // ===== filtro de semana (agora ao lado de "Homologação por operação") =====
-  const selMes = `<select class="mes" onchange="compMes=this.value;render(abaAtual)">
-    <option value="TODOS" ${compMes==="TODOS"?"selected":""}>Mês: todos</option>
-    ${meses.map(m=>`<option value="${m}" ${compMes===m?"selected":""}>${nomeMesBR(m)}</option>`).join("")}
-  </select>`;
-  const selSem = `${selMes}<select class="mes" style="margin-left:8px" onchange="compSem=this.value;render(abaAtual)">
+  const selSem = `<select class="mes" onchange="compSem=this.value;render(abaAtual)">
     <option value="TODOS" ${compSem==="TODOS"?"selected":""}>Semana: todas</option>
     ${semanas.map(([ini,lab])=>`<option value="${ini}" ${compSem===ini?"selected":""}>${lab}</option>`).join("")}
   </select>`;
@@ -2663,5 +2657,5 @@ function render(aba){
 })();
 </script>
 </body>
-<!-- build 20261001-180000 -->
+<!-- build 20261002-093000 -->
 </html>
